@@ -38,6 +38,10 @@ Good:
 
 Gaps in the bus are already at least two tiles wide, so a big power pole can fit in that space.
 
+> 1.5: Leave space for roboports.
+
+Leave a 4-wide gap between some belts to allow for 
+
 ## 2: Production Design
 
 > 2.1: Keep at least 4 tiles of spacing between the bus and adjacent production areas
