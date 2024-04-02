@@ -17,11 +17,11 @@ LTN will try to keep the number of items in the chest between `Request Amount` a
 80 slots per train (40 per wagon * 2 wagons).
 
 Quick ref for item train sizes:
-- Stack 10: 8k
-- Stack 20: 16k
-- Stack 50: 40k
-- Stack 100: 80k
-- Stack 200: 160k
+- Stack 10: 800
+- Stack 20: 1600
+- Stack 50: 4k
+- Stack 100: 8k
+- Stack 200: 16k
 
 ## Undefined Behavior
 
