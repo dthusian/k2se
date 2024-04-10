@@ -69,9 +69,6 @@
   slp 2
   mov out1 4[virtual-signal=signal-A]
   mov out2 r2
-  ; make a bit of excess items just in case
-  mul r1 110
-  div r1 100
   ; wait until inventory exceeds the item request
 :loop2
   slp 600
