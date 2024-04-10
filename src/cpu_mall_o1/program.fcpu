@@ -1,0 +1,86 @@
+:loopInf
+  clr
+  ; r1: request item with qty (+ve)
+  ; r2: request recipe with qty (+ve)
+  ; r3: loop counter
+  ; r8: scratch
+  ; mem1: requests (+ve)
+  ; mem2: inventory (-ve)
+  ; mem3: item blacklist
+  ; mem4: scratch
+
+  ; read inventory and requests
+  mov out1 5[virtual-signal=signal-A]
+  slp 2
+  xmov mem1 red
+  xmov mem2 green
+  xmul mem2 -1
+  
+:loop0 ; this loops until it finds an intermediate it can craft
+  xuni mem4 mem1 mem2
+  xcgt mem4 0 ; get first request that isn't satisfied
+  mov r1 mem4[1]
+  beq r1 0 :beQuietForSeveralDays
+
+  ; find recipes
+  mov out1 2[virtual-signal=signal-A]
+  mov out2 r1
+  slp 32
+  xmov mem4 red
+  mov r3 1
+  ; find machines
+  clr out
+  mov out1 3[virtual-signal=signal-A]
+:loop1 ; select first recipe that can be assembled
+  mov r8 mem4@3
+  beq r8 0 :beQuietForSeveralDays ; if no assemblable recipes are found, assume it's a basic resource and wait
+  mov out2 r8
+  slp 32
+  fid r8 red [item=assembling-machine-3]
+  bne r8 0 :loop1end
+  inc r3
+  jmp :loop1
+:loop1end
+  ; convert item to recipe
+  ; recipe combinator set to "find recipe", "multiply results" enabled, and "divide by product count" enabled
+  ; so this corresponds to total # of recipe crafts required
+  mov r2 mem4@3
+
+  ; find ingredients
+  ; recipe combinator set to "find ingredients" and "multiply results" enabled
+  ; so it will find total ingredients needed for this request
+  mov out1 1[virtual-signal=signal-A]
+  mov out2 r2
+  slp 32
+  xmov mem1 red
+  ; filter out the crafting time ingredient from mem1
+  mov r8 0[virtual-signal=crafting_combinator:recipe-time]
+  emit mem1 r8
+  ; check if all ingredients are present
+  xuni mem4 mem1 mem2
+  xcgt mem4 0
+  ; if any positive, it means there is ingredient missing, so loop back
+  bne cnm4 0 :loop0
+  ; when looping back, mem1 contains total ingredients required
+:loop0end
+
+  ; set the selected recipe
+  clr out
+  slp 2
+  mov out1 4[virtual-signal=signal-A]
+  mov out2 r2
+  ; make a bit of excess items just in case
+  mul r1 110
+  div r1 100
+  ; wait until inventory exceeds the item request
+:loop2
+  slp 600
+  fid r8 green r1
+  blt r8 r1 :loop2
+:loop2end
+
+  jmp :loopInf
+:beQuietForSeveralDays
+  mov out1 8[virtual-signal=signal-A] ; can be used to make alert
+  slp 600
+  jmp :loopInf
