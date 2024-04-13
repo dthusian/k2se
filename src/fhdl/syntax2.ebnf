@@ -1,0 +1,28 @@
+(* FHDL Syntax Candidate 2 *)
+
+program = version-spec, { module };
+version-spec = "version", identifier, ";";
+
+module = module-header, "{", { stmt }, "}";
+module-header = "module", identifier, "(", module-port, { ",", module-port }, ")";
+module-port = port-class, [ signal-class ], identifier;
+port-class = "in" | "out" | "inout";
+
+stmt = mem-decl | mem-set | wire-decl | module-inst | trigger;
+mem-decl = "mem", identifier, ";";
+mem-set = "set", identifier, "+=" | "=", expr, ";";
+wire-decl = "wire", signal-class, identifier, [ "=", expr ], ";";
+module-inst = "inst", identifier, "(", [ expr ], { "," , expr }, ")", ";";
+trigger = "trigger", identifier, trigger-class, "{", { stmt }, "}", ";";
+trigger-class = "increased" | "decreased" | "changed" | "raw";
+signal-class = "single" | "mixed";
+
+expr = identifier | literal | braced-expr | fn-call | binary-op-expr;
+binary-op-expr = expr, binary-op, expr;
+binary-op = "+" | "-" | "*" | "/" | "%" | "**" | "&" | "|" | "^" | ">>" | "<<" | "==" | "!=" | "<" | ">" | "<=" | ">=";
+fn-call = identifier, "(", [ expr ], { ",", expr }, ")";
+braced-expr = "(", expr, ")";
+literal = ? any integer literal, includes 0x and 0b notation ?;
+
+identifier = ? starts with letter, contains letters, numbers, underscores ?;
+comment = ? C comments ?;

@@ -55,6 +55,13 @@ the cargo has not been recieved yet. This means the loader will load the same it
 
 The solution is to create a lockout time, when the loader is disabled for ~24 seconds after the rocket is launched.
 
+#### Overfilling an outpost
+
+Some loading strategies will send more items than requested. This might cause the outpost's storage to fill up
+if the loading strategy does not control for it. For example, if an outpost requests 5 items but only 1 is
+used, normloading and enhanced naiveloading will fill more of the 4 unused items, eventually overfilling
+the outpost's storage.
+
 ### Loading Strategies
 
 There are a few different loading strategies, however the one we are using is _enhanced naiveloading_.
@@ -71,16 +78,25 @@ problems:
 - if the outpost reports a significant resource pressure, then begin normloading the rocket to fill it
 problems:
 - either needs extra logic on the outpost, or needs 2 wires to send back
+- suffers from overfilling problem
 #### Norm-loading
 - scale the demand by a coefficient, A
 - adjust A so that the total demand fills a cargo rocket
 - subtract scaled demand from cargo contents
 - set filters to signals that are negative
 problems:
-- if the outpost is full on most item types but is low on 1, can cause a oversupply of that item
+- suffers from overfilling problem
 #### Max-loading
 - subtract demand from cargo contents
 - find the most negative signal and set filters to that
 problems:
 - still suffers from the deadlock problem, but is marginally better at recovering from a high demand situation than naiveloading
 - high complexity
+#### For-loading
+- a derivative of enhanced-naive
+- defn an upper and lower bound
+  - force-send when `inv < lower`
+  - when force-sending, can't load such that `inv > upper`
+- force-send algorithm is the same as enhanced naive (scale demand until rocket is full)
+problems:
+- doesn't always fill the rocket (less fuel efficient)
