@@ -1,5 +1,5 @@
 use std::error::Error;
-use nom::bytes::complete::{is_not, tag, take_until, take_while};
+use nom::bytes::complete::{is_a, is_not, tag, take_until, take_while};
 use nom::error::{ParseError, VerboseError};
 use nom::{IResult, Parser};
 use nom::branch::alt;
@@ -21,7 +21,7 @@ pub struct Program {
 }
 
 impl Program {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
     pair(
       delimited(
         wc01(tag("version")),
@@ -46,7 +46,7 @@ pub struct Module {
 }
 
 impl Module {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
     tuple((
       preceded(
         ws01(tag("module")),
@@ -80,7 +80,7 @@ pub struct PortDecl {
 }
 
 impl PortDecl {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
     tuple((ws01(PortClass::parser), ws01(SignalClass::parser), wc(identifier)))
       .map(|(port_class, signal_class, name)| PortDecl {
         port_class,
@@ -97,7 +97,7 @@ pub enum PortClass {
 }
 
 impl PortClass {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
     map_res(
       take_while(char::is_alphabetic),
       |v| {
@@ -119,15 +119,15 @@ pub enum Stmt {
   MemSet {
     name: String,
     add_assign: bool,
-    expr: Expr,
+    expr: Vec<ExprPart>,
   },
   WireDecl {
     name: String,
-    expr: Expr,
+    expr: Vec<ExprPart>,
   },
   ModuleInst {
     module: String,
-    args: Vec<Expr>,
+    args: Vec<Vec<ExprPart>>,
   },
   Trigger {
     wire: String,
@@ -151,7 +151,7 @@ pub enum TriggerKind {
 }
 
 impl TriggerKind {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
     map_res(
       take_while(char::is_alphabetic),
       |v| {
@@ -187,75 +187,30 @@ impl SignalClass {
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum Expr {
-  Identifier {
-    name: String,
-  },
-  Literal {
-    val: i32,
-  },
-  FnCall {
-    func: String,
-    args: Vec<Expr>,
-  },
-  BinaryOps {
-    precedence: u32,
-    car: Box<Expr>,
-    cdr: Vec<(BinaryOp, Expr)>
-  },
-  Braced {
-    inner: Box<Expr>
-  },
+pub enum ExprPart {
+  Identifier(String),
+  Literal(i32),
+  LBrace,
+  RBrace,
+  Op(BinaryOp)
 }
 
-impl Expr {
-  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
-    Self::parser_with_prec(HIGHEST_PREC, s)
-  }
-  
-  pub fn parser_with_prec(prec: u32, s: &str) -> IResult<&str, Self, VerboseError<&str>> {
-    switch(
-      prec > 0,
-      pair(
-        wc(curry!(Expr::parser_with_prec, prec - 1)),
-        many0(pair(
-          wc(curry!(BinaryOp::parser, prec)),
-          wc(curry!(Expr::parser_with_prec, prec - 1))
-        ))
-      ).map(|(car, cdr)| if cdr.is_empty() {
-        car
-      } else {
-        Expr::BinaryOps {
-          precedence: prec,
-          car: Box::new(car),
-          cdr,
-        }
-      }),
-      alt((
-        tuple((
-          wc(identifier),
-          delimited(
-            wc(tag("(")),
-            wc(separated_list0(wc(tag(",")), cut(wc(Expr::parser)))),
-            wc(tag(")"))
-          ),
-        )).map(|(func, args)| Expr::FnCall {
-          func: func.to_owned(),
-          args,
-        }),
-        delimited(
-          wc(tag("(")),
-          wc(Expr::parser),
-          wc(tag(")"))
-        ).map(|expr| Expr::Braced {
-          inner: Box::new(expr),
-        }),
-        wc(parse_int)
-          .map(|v| Expr::Literal { val: v }),
-        wc(identifier)
-          .map(|v| Expr::Identifier { name: v.to_owned(), })
+impl ExprPart {
+  pub fn parser<'a, E: ParseError<&'a str>>(s: &'a str) -> IResult<&'a str, Self, E> {
+    alt((
+      wc(identifier)
+        .map(str::to_owned)
+        .map(ExprPart::Identifier),
+      wc(parse_int)
+        .map(ExprPart::Literal),
+      wc(tag("("))
+        .map(|_| ExprPart::LBrace),
+      wc(tag(")"))
+        .map(|_| ExprPart::RBrace),
+      wc(BinaryOp::parser)
+        .map(ExprPart::Op)
       ))
-    ).parse(s)
+      .parse(s)
   }
 }
 
@@ -312,15 +267,8 @@ impl BinaryOp {
       _ => return Err("Invalid operator".into())
     })
   }
-  pub fn parser(prec: u32, s: &str) -> IResult<&str, Self, VerboseError<&str>> {
-    map_res(alt((
-      switch(prec == 6, alt((tag("=="), tag("!="), tag("<="), tag(">="), tag("<"), tag(">"))), nothing),
-      switch(prec == 5, alt((tag("&"), tag("|"), tag("^"))), nothing),
-      switch(prec == 4, alt((tag("<<"), tag(">>"))), nothing),
-      switch(prec == 3, alt((tag("+"), tag("-"))), nothing),
-      switch(prec == 2, alt((tag("*"), tag("/"), tag("%"))), nothing),
-      switch(prec == 1, alt((tag("**"),)), nothing)
-    )), Self::parse_raw).parse(s)
+  pub fn parser(s: &str) -> IResult<&str, Self, VerboseError<&str>> {
+    map_res(is_a("+-*/%&|^<<>>==!=<><=>="), Self::parse_raw).parse(s)
   }
 }
 

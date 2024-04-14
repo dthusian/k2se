@@ -4,7 +4,7 @@ use nom::{Finish, IResult};
 
 mod parse;
 
-fn nom_test_parse<'a, 'b: 'a, T>(parser: impl Fn(&'a str) -> IResult<&'a str, T, VerboseError<&'a str>>, data: &'b str) -> (&'a str, T) {
+fn nom_test_parse<'a, 'b: 'a, T>(parser: impl FnOnce(&'a str) -> IResult<&'a str, T, VerboseError<&'a str>>, data: &'b str) -> (&'a str, T) {
   parser(data).finish().map_err(|v| eprintln!("{}", convert_error(data, v))).unwrap()
 }
 
