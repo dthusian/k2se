@@ -24,6 +24,18 @@ impl Ord for Pos {
   }
 }
 
+impl Default for Pos {
+  fn default() -> Self {
+    Pos::new(1, 0)
+  }
+}
+
+impl Pos {
+  pub fn new(line: u32, col: u32) -> Pos {
+    Pos { line, col }
+  }
+}
+
 /// A span represents a section of source code, delimited by two positions.
 /// Spans are inclusive ranges and so include both endpoints.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

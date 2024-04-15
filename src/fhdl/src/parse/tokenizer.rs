@@ -1,6 +1,8 @@
 use std::iter::Peekable;
 use std::str::FromStr;
 use crate::err::{Cerr, CerrSpan};
+use crate::util::imp_iter::{imperative, ImperativeIterator};
+use crate::parse::iter_with_pos::{with_pos, WithPos};
 use crate::parse::span::{Pos, Span, WithSpan};
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -80,60 +82,39 @@ impl BinaryOp {
 }
 
 pub struct Tokenize<I: Iterator<Item = char>> {
-  i: Peekable<I>,
-  pos: Pos
+  i: ImperativeIterator<Peekable<WithPos<I>>>,
 }
 
 impl<I: Iterator<Item = char>> Tokenize<I> {
-  fn next_pos(&mut self) -> Option<(Pos, char)> {
-    let next = self.i.next();
-    if let Some(next) = next {
-      let pos = self.pos;
-      if next == '\n' {
-        self.pos.line += 1;
-        self.pos.col = 0;
-      } else {
-        self.pos.col += 1;
-      }
-      Some((pos, next))
-    } else {
-      None
-    }
+  fn _next(&mut self) -> Option<(Pos, char)> {
+    self.i.next()
   }
   
-  fn peek_pos(&mut self) -> Option<(Pos, char)> {
-    self.i.peek().map(|peek| (self.pos, *peek))
+  fn _peek(&mut self) -> Option<(Pos, char)> {
+    self.i.peek().copied()
   }
   
   /// Reads as many characters as possible that satisfy a predicate.
   /// Returns the position of the last taken character. Returns `None`
   /// if nothing was read.
-  fn take_while_pos(&mut self, mut pred: impl FnMut(char) -> bool) -> Option<(Span, String)> {
-    let mut start_pos = None;
-    let mut end_pos = None;
-    let mut buf = String::new();
-    loop {
-      if let Some((_, peek)) = self.peek_pos() {
-        if pred(peek) {
-          // unwrap: if peek returns Some, there will be something to take
-          let (new_pos, next) = self.next_pos().unwrap();
-          buf.push(next);
-          start_pos.get_or_insert(new_pos);
-          end_pos = Some(new_pos);
-        } else {
-          break;
-        }
-      } else {
-        break;
-      }
+  fn take_while_span(&mut self, mut pred: impl FnMut(char) -> bool) -> Option<(Span, String)> {
+    let buf = self.i.imp_take_while(|(_, c)| pred(*c));
+    if buf.is_empty() {
+      None
+    } else {
+      Some((
+        Span {
+          start: buf[0].0,
+          end: buf[buf.len() - 1].0,
+        },
+        buf.iter().map(|v| v.1).collect::<String>()
+      ))
     }
-    // unwrap: if start_pos is Some, the end_pos is Some
-    start_pos.map(|_| (Span { start: start_pos.unwrap(), end: end_pos.unwrap() }, buf))
   }
   
   /// Reads an name from the input stream. Panics if the stream is not at a name.
   fn parse_name(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
-    let (span, s) = self.take_while_pos(|c| is_ident(c))
+    let (span, s) = self.take_while_span(|c| is_ident(c))
       .expect("Not a name");
     Ok(WithSpan {
       span,
@@ -144,7 +125,7 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
   /// Reads an integer literal from the input stream. Returns a Result if integer parsing failed.
   /// Panics if the stream is not at an integer literal.
   fn parse_literal(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
-    let (span, s) = self.take_while_pos(|c| is_ident(c))
+    let (span, s) = self.take_while_span(|c| is_ident(c))
       .expect("Not a literal");
     let discrim = s.chars().nth(1);
     let is_hex = discrim.map(|v| v == 'x' || v == 'X').unwrap_or(false);
@@ -165,10 +146,10 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
   
   /// Reads an operator or skips a comment. Returns None if a comment was matched.
   fn parse_op_or_comment(&mut self) -> Option<Result<WithSpan<Token>, CerrSpan>> {
-    let (span, s) = self.take_while_pos(|c| is_op(c))
+    let (span, s) = self.take_while_span(|c| is_op(c))
       .expect("Not an operator");
     if s.starts_with("//") {
-      self.take_while_pos(|c| c != '\n');
+      self.take_while_span(|c| c != '\n');
       None
     } else {
       Some(util_inject_span(BinaryOp::parse_raw(&s).map(Token::Op), span))
@@ -181,7 +162,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
 
   fn next(&mut self) -> Option<Self::Item> {
     loop {
-      let (pos, peek) = self.peek_pos()?;
+      let (pos, peek) = self._peek()?;
       if is_ident_start(peek) {
         return Some(self.parse_name())
       }
@@ -189,7 +170,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
         return Some(self.parse_literal())
       }
       if char::is_ascii_whitespace(&peek) {
-        self.next_pos();
+        self._next();
         continue;
       }
       if is_op(peek) {
@@ -199,7 +180,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
           continue;
         }
       }
-      let (_, next) = self.next_pos().unwrap();
+      let (_, next) = self._next().unwrap();
       return Some(match peek {
         '{' => Ok(Token::LBrace),
         '}' => Ok(Token::RBrace),
@@ -215,8 +196,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
 
 pub fn tokenize<I: Iterator<Item = char>>(iter: I) -> Tokenize<I> {
   return Tokenize {
-    i: iter.peekable(),
-    pos: Pos { line: 1, col: 0 },
+    i: imperative(with_pos(iter).peekable()),
   }
 }
 

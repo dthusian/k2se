@@ -1,3 +1,4 @@
+use std::num::{IntErrorKind};
 use crate::err::{Cerr, CerrSpan};
 use crate::parse::span::{Pos, Span};
 use crate::parse::tokenizer::{BinaryOp, tokenize, Token};
@@ -120,7 +121,26 @@ pub fn tokenize_valid3() {
 pub fn tokenize_invalid1() {
   let err = util_tokenize("//\n[3]");
   assert_eq!(err, Err(CerrSpan {
-    span: Span { start: Pos { line: 2, col: 0 }, end: Pos { line: 2, col: 0 } },
+    span: Span { start: Pos::new(2, 0), end: Pos::new(2, 0) },
     cerr: Cerr::InvalidChar,
   }));
+}
+
+#[test]
+pub fn tokenize_invalid2() {
+  let err = util_tokenize(" 3 0xgrr");
+  let Err(CerrSpan {
+    span: Span { start: Pos { line: 1, col: 3 }, end: Pos { line: 1, col: 7 } },
+    cerr: Cerr::InvalidInteger(parse_int_err),
+  }) = err else { panic!("match failed: {:?}", err) };
+  assert_eq!(parse_int_err.kind(), &IntErrorKind::InvalidDigit);
+}
+
+#[test]
+pub fn tokenize_invalid3() {
+  let err = util_tokenize("3 <> 9");
+  assert_eq!(err, Err(CerrSpan {
+    span: Span { start: Pos::new(1, 2), end: Pos::new(1, 3) },
+    cerr: Cerr::InvalidOperator,
+  }))
 }

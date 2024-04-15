@@ -1,4 +1,5 @@
-use crate::parse::tokenizer::BinaryOp;
+use crate::util::imp_iter::ImperativeIterator;
+use crate::parse::tokenizer::{BinaryOp, Token};
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Program {
@@ -7,7 +8,9 @@ pub struct Program {
 }
 
 impl Program {
-  
+  pub fn parse(tokens: &mut ImperativeIterator<impl Iterator<Item = Token>>) {
+    
+  }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]

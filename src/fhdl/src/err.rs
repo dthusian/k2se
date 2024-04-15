@@ -1,5 +1,5 @@
 
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::num::ParseIntError;
 use thiserror::Error;
 use crate::parse::span::Span;
@@ -32,12 +32,13 @@ impl CerrSpan {
     let mut s = String::new();
     writeln!(&mut s, "at {}:{}:{}:", filename, self.span.start.line, self.span.start.col)?;
     for i in self.span.start.line..=self.span.end.line {
-      let cstart = if i == self.span.start.line { self.span.start.col as usize } else { 0usize };
-      let cend = if i == self.span.end.line { self.span.end.col as usize } else { source[i].len() };
+      let i = i as usize;
+      let cstart = if i == self.span.start.line as usize { self.span.start.col as usize } else { 0usize };
+      let cend = if i == self.span.end.line as usize { self.span.end.col as usize } else { source[i].len() - 1 };
       writeln!(&mut s, "  {}", source[i])?;
-      writeln!(&mut s, "  {}{}", " ".repeat(cstart), "^".repeat(cend - cstart))?;
+      writeln!(&mut s, "  {}{}", " ".repeat(cstart), "^".repeat(cend - cstart + 1))?;
     }
-    s
+    Ok(s)
   }
 }
 
