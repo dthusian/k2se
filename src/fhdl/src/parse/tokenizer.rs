@@ -66,12 +66,16 @@ impl Token {
 
 /// Operator Precedence (high number = eval last):
 /// Within same precedence class, operators are eval'd left to right
-/// 1: Pow
-/// 2: Div, Mul, Mod
-/// 3: Add, Sub
-/// 4: Shl, Shr
-/// 5: And, Or, Xor
-/// 6: Eq, Ne, Lt, Gt, Le, Ge
+/// - 1: Pow
+/// - 2: Div, Mul, Mod
+/// - 3: Add, Sub
+/// - 4: Shl, Shr
+/// - 5: And, Or, Xor
+/// - 6: Eq, Ne, Lt, Gt, Le, Ge
+/// - None (99): Assign, AddAssign
+/// 
+/// The last two operators are not allowed in general exprs
+/// and as such are given placeholder precedences lower than anything else.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum BinaryOp {
   Add,
@@ -147,6 +151,30 @@ impl BinaryOp {
       "+=" => BinaryOp::AddAssign,
       _ => return Err(Cerr::InvalidOperator)
     })
+  }
+  
+  pub fn precedence(self) -> u32 {
+    match self {
+      BinaryOp::Add => 3,
+      BinaryOp::Sub => 3,
+      BinaryOp::Mul => 2,
+      BinaryOp::Div => 2,
+      BinaryOp::Mod => 2,
+      BinaryOp::Pow => 1,
+      BinaryOp::And => 5,
+      BinaryOp::Or => 5,
+      BinaryOp::Xor => 5,
+      BinaryOp::Shl => 4,
+      BinaryOp::Shr => 4,
+      BinaryOp::Eq => 6,
+      BinaryOp::Ne => 6,
+      BinaryOp::Lt => 6,
+      BinaryOp::Gt => 6,
+      BinaryOp::Le => 6,
+      BinaryOp::Ge => 6,
+      BinaryOp::Assign => 99,
+      BinaryOp::AddAssign => 99
+    }
   }
 }
 

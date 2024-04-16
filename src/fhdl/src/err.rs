@@ -21,6 +21,8 @@ pub enum Cerr {
   UnexpectedTokenType(&'static str),
   #[error("Unexpected EOF")]
   UnexpectedEOF,
+  #[error("Invalid expression")]
+  InvalidExpr,
 }
 
 impl Cerr {

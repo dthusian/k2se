@@ -71,8 +71,79 @@ impl<'a> Cursor<'a> {
     Ok((t, span))
   }
   
+  /// Takes the next token, asserting that it is [`Token::Name`] and
+  /// then unwrapping its inner string.
+  pub fn next_identifier(&self) -> Result<(String, Span), CerrSpan> {
+    let (id, span) = self
+      .next_map(|v| v
+        .get_name()
+        .map(|v| v.to_owned())
+        .ok_or(Cerr::UnexpectedTokenType("identifier")))?;
+    Ok((id.to_owned(), span))
+  }
+  
+  /// Peeks the next token without taking it.
+  pub fn peek(&self) -> Result<(&Token, Span), CerrSpan> {
+    self.parent.tokens.get(self.position.get())
+      .map(|v| (&v.t, v.span))
+      .ok_or(Cerr::UnexpectedEOF.into())
+  }
+  
+  pub fn peek_assert(&self, expected: &Token) -> Result<Span, CerrSpan> {
+    let (token, span) = self.peek()?;
+    if token != expected {
+      Err(Cerr::UnexpectedToken(vec![expected.to_string()]).with(span))
+    } else {
+      Ok(span)
+    }
+  }
+  
+  /// Returns true if there were enough elements to skip, false if EOF was
+  /// reached first.
+  pub fn skip(&self, n: usize) -> bool {
+    self.position.set(self.position.get() + n);
+    if self.position.get() > self.parent.tokens.len() {
+      false
+    } else {
+      true
+    }
+  }
+
+  /// Returns true if the rewind went past the starting token.
+  pub fn rewind(&self, n: usize) -> bool {
+    let end = self.position.get().checked_sub(n);
+    if let Some(end) = end {
+      self.position.set(end);
+      true
+    } else {
+      self.position.set(0);
+      false
+    }
+  }
+  
   /// Takes tokens from the stream while the provided predicate is true.
+  /// Does not consume any elements that are not returned.
   pub fn take_while(&self, mut pred: impl FnMut(&Token, Span) -> bool) -> Result<Vec<(&Token, Span)>, CerrSpan> {
-    todo!()
+    let mut buf = vec![];
+    loop {
+      let (token, span) = self.next()?;
+      if pred(token, span) {
+        buf.push((token, span));
+      } else {
+        self.rewind(1);
+        break;
+      }
+    }
+    Ok(buf)
+  }
+  
+  /// Takes and discards tokens until a token passes the specified predicate, returning it
+  pub fn search_for(&self, mut pred: impl FnMut(&Token, Span) -> bool) -> Result<(&Token, Span), CerrSpan> {
+    loop {
+      let (token, span) = self.next()?;
+      if pred(token, span) {
+        return Ok((token, span));
+      }
+    }
   }
 }
