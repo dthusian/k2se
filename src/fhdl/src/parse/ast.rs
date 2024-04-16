@@ -1,27 +1,89 @@
-use crate::util::imp_iter::ImperativeIterator;
+use crate::err::{Cerr, CerrSpan};
+use crate::parse::span::{Span};
 use crate::parse::tokenizer::{BinaryOp, Token};
+use crate::parse::tokenstream::Cursor;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Program {
-  pub version: String,
+  pub version: Version,
   pub modules: Vec<Module>
 }
 
 impl Program {
-  pub fn parse(tokens: &mut ImperativeIterator<impl Iterator<Item = Token>>) {
-    
+  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+    let version = Version::parse(tokens)?;
+    let mut modules = vec![];
+    loop {
+      let peeker = tokens.clone();
+      let Some((token, span)) = peeker.next_or_eof() else { break; };
+      match &token {
+        Token::Name(name) if name == "module" => {
+          modules.push(Module::parse(tokens)?);
+        }
+        _ => return Err(Cerr::UnexpectedToken(vec!["module".into()]).with(span))
+      }
+    }
+    Ok(Program {
+      version,
+      modules,
+    })
+  }
+}
+
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum Version {
+  V2
+}
+
+impl Version {
+  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+    tokens.next_assert(&Token::Name("version".into()))?;
+    let (ver, span) = tokens.next()?;
+    match ver {
+      Token::Literal(2) => Version::V2,
+      _ => return Err(Cerr::UnexpectedToken(vec!["2".into()]).with(span))
+    };
+    Ok(Version::V2)
   }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Module {
+  pub span: Span,
   pub name: String,
   pub ports: Vec<PortDecl>,
   pub stmts: Vec<Stmt>
 }
 
 impl Module {
-  
+  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+    let start_span = tokens.next_assert(&Token::Name("version".into()))?;
+    let (name, _) = tokens.next_map(
+      |v| v
+        .get_name()
+        .map(|v| v.to_owned())
+        .ok_or(Cerr::UnexpectedTokenType("identifier"))
+    )?;
+    tokens.next_assert(&Token::LParen)?;
+    let mut ports = vec![];
+    loop {
+      ports.push(PortDecl::parse(tokens)?);
+      let (token, span) = tokens.next()?;
+      match token {
+        Token::RParen => break,
+        Token::Comma => continue,
+        _ => return Err(Cerr::UnexpectedToken(vec![",".into(), ")".into()]).with(span))
+      }
+    }
+    
+    Ok(Module {
+      span: start_span.union(todo!()),
+      name,
+      ports: vec![],
+      stmts: vec![],
+    })
+  }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -32,7 +94,9 @@ pub struct PortDecl {
 }
 
 impl PortDecl {
-  
+  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+    todo!()
+  }
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]

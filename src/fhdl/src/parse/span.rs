@@ -38,7 +38,7 @@ impl Pos {
 
 /// A span represents a section of source code, delimited by two positions.
 /// Spans are inclusive ranges and so include both endpoints.
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Default, Copy, Clone, Eq, PartialEq)]
 pub struct Span {
   pub start: Pos,
   pub end: Pos,

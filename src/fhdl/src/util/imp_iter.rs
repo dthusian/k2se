@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 /// An iterator that supports an imperative iterator style.
-/// Useful for parsers, where there is strongly heterogenous iterator use.
+/// Useful for parsers, where there is heterogenous iterator use.
 pub struct ImperativeIterator<I: Iterator> {
   i: Peekable<I>
 }
@@ -39,16 +39,6 @@ impl<I: Iterator> ImperativeIterator<I> {
       }
     }
     buf
-  }
-  
-  /// Takes the next element if it is equal to the given element.
-  pub fn next_if_eq(&mut self, cmp: &I::Item) -> Option<I::Item> where I::Item: PartialEq {
-    let peek = self.i.peek();
-    if peek.map(|v| v == cmp).unwrap_or(false) {
-      self.i.next()
-    } else {
-      None
-    }
   }
   
   /// Takes a fixed number of elements (or however many are left) and returns it in a Vec.

@@ -1,3 +1,4 @@
+use std::fmt::{Display, Formatter, Write};
 use std::iter::Peekable;
 use std::str::FromStr;
 use crate::err::{Cerr, CerrSpan};
@@ -5,6 +6,7 @@ use crate::util::imp_iter::{imperative, ImperativeIterator};
 use crate::parse::iter_with_pos::{with_pos, WithPos};
 use crate::parse::span::{Pos, Span, WithSpan};
 
+/// Represents a token.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Token {
   Name(String),
@@ -16,6 +18,50 @@ pub enum Token {
   Comma,
   Semicolon,
   Op(BinaryOp)
+}
+
+impl Display for Token {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    match self {
+      Token::Name(s) => f.write_str(s),
+      Token::Literal(i) => write!(f, "{}", i),
+      Token::LParen => f.write_char('('),
+      Token::RParen => f.write_char(')'),
+      Token::LBrace => f.write_char('{'),
+      Token::RBrace => f.write_char('}'),
+      Token::Comma => f.write_char(','),
+      Token::Semicolon => f.write_char(';'),
+      Token::Op(op) => write!(f, "{}", op),
+    }
+  }
+}
+
+impl Token {
+  /// Convenience method for creating a [`Token::Name`] with a `&str`
+  pub fn name(s: &str) -> Self {
+    Token::Name(s.into())
+  }
+  
+  pub fn get_name(&self) -> Option<&str> {
+    match self {
+      Token::Name(s) => Some(s.as_str()),
+      _ => None
+    }
+  }
+  
+  pub fn get_literal(&self) -> Option<i32> {
+    match self {
+      Token::Literal(x) => Some(*x),
+      _ => None,
+    }
+  }
+  
+  pub fn get_op(&self) -> Option<BinaryOp> {
+    match self {
+      Token::Op(op) => Some(*op),
+      _ => None
+    }
+  }
 }
 
 /// Operator Precedence (high number = eval last):
@@ -47,11 +93,35 @@ pub enum BinaryOp {
   Ge,
   Assign,
   AddAssign,
-  TrigAssign
 }
 
-
 const HIGHEST_PREC: u32 = 6;
+
+impl Display for BinaryOp {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    f.write_str(match self {
+      BinaryOp::Add => "+",
+      BinaryOp::Sub => "-",
+      BinaryOp::Mul => "*",
+      BinaryOp::Div => "/",
+      BinaryOp::Mod => "%",
+      BinaryOp::Pow => "**",
+      BinaryOp::And => "&",
+      BinaryOp::Or => "|",
+      BinaryOp::Xor => "^",
+      BinaryOp::Shl => "<<",
+      BinaryOp::Shr => ">>",
+      BinaryOp::Eq => "==",
+      BinaryOp::Ne => "!=",
+      BinaryOp::Lt => "<",
+      BinaryOp::Gt => ">",
+      BinaryOp::Le => "<=",
+      BinaryOp::Ge => ">=",
+      BinaryOp::Assign => "=",
+      BinaryOp::AddAssign => "+="
+    })
+  }
+}
 
 impl BinaryOp {
   pub fn parse_raw(s: &str) -> Result<Self, Cerr> {
@@ -75,7 +145,6 @@ impl BinaryOp {
       ">=" => BinaryOp::Ge,
       "=" => BinaryOp::Assign,
       "+=" => BinaryOp::AddAssign,
-      "*=" => BinaryOp::TrigAssign,
       _ => return Err(Cerr::InvalidOperator)
     })
   }
