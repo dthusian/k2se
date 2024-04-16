@@ -10,7 +10,7 @@ pub struct Program {
 }
 
 impl Program {
-  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+  pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
     let version = Version::parse(tokens)?;
     let mut modules = vec![];
     loop {
@@ -37,7 +37,7 @@ pub enum Version {
 }
 
 impl Version {
-  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+  pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
     tokens.next_assert(&Token::Name("version".into()))?;
     let (ver, span) = tokens.next()?;
     match ver {
@@ -57,7 +57,7 @@ pub struct Module {
 }
 
 impl Module {
-  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
+  pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
     let start_span = tokens.next_assert(&Token::Name("version".into()))?;
     let (name, _) = tokens.next_map(
       |v| v
@@ -76,7 +76,6 @@ impl Module {
         _ => return Err(Cerr::UnexpectedToken(vec![",".into(), ")".into()]).with(span))
       }
     }
-    
     Ok(Module {
       span: start_span.union(todo!()),
       name,
@@ -94,8 +93,12 @@ pub struct PortDecl {
 }
 
 impl PortDecl {
-  pub fn parse(tokens: &Cursor<Token>) -> Result<Self, CerrSpan> {
-    todo!()
+  pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
+    Ok(PortDecl {
+      port_class: PortClass::parse(tokens)?.0,
+      signal_class: SignalClass::Single,
+      name: "".to_string(),
+    })
   }
 }
 
@@ -105,7 +108,20 @@ pub enum PortClass {
 }
 
 impl PortClass {
-  
+  pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
+    tokens.next_map(|v| {
+      let cerr = Cerr::UnexpectedToken(vec!["in".into(), "out".into(), "inout".into()]);
+      Ok(match v {
+        Token::Name(name) => match name.as_str() { 
+          "in" => PortClass::In,
+          "out" => PortClass::Out,
+          "inout" => PortClass::InOut,
+          _ => return Err(cerr),
+        },
+        _ => return Err(cerr)
+      })
+    })
+  }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -156,7 +172,19 @@ pub enum SignalClass {
 }
 
 impl SignalClass {
-  
+  pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
+    tokens.next_map(|v| {
+      let cerr = Cerr::UnexpectedToken(vec!["in".into(), "out".into(), "inout".into()]);
+      Ok(match v {
+        Token::Name(name) => match name.as_str() {
+          "single" => SignalClass::Single,
+          "mixed" => SignalClass::Mixed,
+          _ => return Err(cerr),
+        },
+        _ => return Err(cerr)
+      })
+    })
+  }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
