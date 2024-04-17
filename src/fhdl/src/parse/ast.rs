@@ -1,3 +1,6 @@
+//! AST parsing. All structs here are part of the AST, and
+//! have a parse function that returns `Self` or `(Self, Span)`. 
+
 use crate::err::{Cerr, CerrSpan};
 use crate::parse::span::{Span};
 use crate::parse::tokenizer::{BinaryOp, Token};
@@ -6,7 +9,7 @@ use crate::parse::tokenstream::Cursor;
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Program {
   pub version: Version,
-  pub modules: Vec<Module>
+  pub modules: Vec<(Module, Span)>
 }
 
 impl Program {
@@ -50,15 +53,14 @@ impl Version {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Module {
-  pub span: Span,
   pub name: String,
   pub ports: Vec<PortDecl>,
   pub stmts: Vec<(Stmt, Span)>
 }
 
 impl Module {
-  pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
-    let start_span = tokens.next_assert(&Token::Name("version".into()))?;
+  pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
+    let start_span = tokens.next_assert(&Token::Name("module".into()))?;
     let (name, _) = tokens.next_map(
       |v| v
         .get_name()
@@ -69,12 +71,11 @@ impl Module {
     let stmts = parse_list_brace_semi(tokens, Stmt::parse)?;
     tokens.rewind(1);
     let end_span = tokens.next()?.1;
-    Ok(Module {
-      span: start_span.union(end_span),
+    Ok((Module {
       name,
       ports,
       stmts,
-    })
+    }, start_span.union(end_span)))
   }
 }
 

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
 use crate::err::{Cerr, CerrSpan};
-use crate::parse::ast::{Expr, Stmt, TriggerKind};
+use crate::parse::ast::{Expr, Module, PortClass, PortDecl, SignalClass, Stmt, TriggerKind};
 use crate::parse::span::{Pos, Span};
 use crate::parse::tokenizer::{BinaryOp, tokenize};
 use crate::parse::tokenstream::{Cursor, TokenStream};
@@ -306,4 +306,70 @@ pub fn stmt_parse_trigger_invalid3() {
 #[test]
 pub fn stmt_parse_trigger_invalid4() {
   util_test_parser_err("trigger wire2 boo { set thing = 4; wire unused; }", Stmt::parse);
+}
+
+#[test]
+pub fn module_parse_valid() {
+  let module = util_test_parser("// commen
+module foo(in single x, inout single y)
+{
+  mem reg;
+  wire w = x + y;
+  trigger x increasing {
+    set reg = y;
+    wire unused;
+  };
+  set y += w; } // comment
+", Module::parse);
+  let expected = (
+    Module {
+      name: "foo".into(),
+      ports: vec![
+        PortDecl {
+          port_class: PortClass::In,
+          signal_class: SignalClass::Single,
+          name: "x".into(),
+        },
+        PortDecl {
+          port_class: PortClass::InOut,
+          signal_class: SignalClass::Single,
+          name: "y".into(),
+        }
+      ],
+      stmts: vec![
+        (Stmt::MemDecl {
+          name: "reg".into(),
+        }, Span { start: Pos::new(4, 2), end: Pos::new(4, 9) }),
+        (Stmt::WireDecl {
+          name: "w".into(),
+          expr: Some(Expr::BinaryOps {
+            car: Box::new(Expr::Identifier { name: "x".into() }),
+            cdr: vec![(BinaryOp::Add, Expr::Identifier { name: "y".into() })],
+          }),
+        }, Span { start: Pos::new(5, 2), end: Pos::new(5, 16) }),
+        (Stmt::Trigger {
+          watching: "x".into(),
+          trigger_kind: TriggerKind::Increasing,
+          statements: vec![
+            (Stmt::MemSet {
+              name: "reg".into(),
+              assign_type: BinaryOp::Assign,
+              expr: Expr::Identifier {
+                name: "y".into(),
+              },
+            }, Span { start: Pos::new(7, 4), end: Pos::new(7, 15) }),
+            (Stmt::WireDecl {
+              name: "unused".into(),
+              expr: None,
+            }, Span { start: Pos::new(8, 4), end: Pos::new(8, 15) })
+          ],
+        }, Span { start: Pos::new(6, 2), end: Pos::new(9, 3) }),
+        (Stmt::MemSet {
+          name: "y".into(),
+          assign_type: BinaryOp::AddAssign,
+          expr: Expr::Identifier { name: "w".into() },
+        }, Span { start: Pos::new(10, 2), end: Pos::new(10, 12) })
+      ],
+    }, Span { start: Pos::new(2, 0), end: Pos::new(10, 14) });
+  assert_eq!(module, expected);
 }
