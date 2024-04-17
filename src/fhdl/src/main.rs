@@ -1,5 +1,5 @@
 #![warn(missing_debug_implementations)]
-
+#![allow(dead_code)]
 #[cfg(test)]
 mod test;
 mod err;

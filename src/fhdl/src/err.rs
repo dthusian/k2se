@@ -1,4 +1,3 @@
-
 use std::fmt::{Debug, Display, Formatter, Write};
 use std::num::ParseIntError;
 use thiserror::Error;
@@ -34,7 +33,7 @@ impl Cerr {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CerrSpan {
   pub span: Option<Span>,
-  pub cerr: Cerr
+  pub cerr: Cerr,
 }
 
 impl CerrSpan {
@@ -53,8 +52,8 @@ impl CerrSpan {
   }
   
   pub fn format_err(&self, filename: &str, source: &[&str]) -> Result<String, std::fmt::Error> {
-    let mut span = self.span.unwrap_or_else(
-      || Span::from(Pos::new((source.len() - 1) as u32, (source[source.len() - 1].len() - 1) as u32))
+    let span = self.span.unwrap_or_else(
+      || Span::from(Pos::new(source.len() as u32, (source[source.len() - 1].len() - 1) as u32))
     );
     let mut s = String::new();
     writeln!(&mut s, "at {}:{}:{}: {}", filename, span.start.line, span.start.col, self.cerr)?;
@@ -62,7 +61,7 @@ impl CerrSpan {
       let i = i as usize;
       let cstart = if i == span.start.line as usize { span.start.col as usize } else { 0usize };
       let cend = if i == span.end.line as usize { span.end.col as usize } else { source[i].len() - 1 };
-      writeln!(&mut s, "  {}", source[i])?;
+      writeln!(&mut s, "  {}", source[i - 1])?;
       writeln!(&mut s, "  {}{}", " ".repeat(cstart), "^".repeat(cend - cstart + 1))?;
     }
     Ok(s)

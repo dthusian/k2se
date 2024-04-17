@@ -277,7 +277,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
           continue;
         }
       }
-      let (_, next) = self._next().unwrap();
+      self._next().unwrap();
       return Some(match peek {
         '{' => Ok(Token::LBrace),
         '}' => Ok(Token::RBrace),

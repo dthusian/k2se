@@ -54,7 +54,7 @@ pub fn cursor_next_map() {
     WithSpan::new(ds, Token::Literal(40))
   ]);
   let cursor = s.begin();
-  let mut mapper_called = Cell::new(0);
+  let mapper_called = Cell::new(0);
   let mut mapper = |x: &Token| { mapper_called.set(mapper_called.get() + 1); Ok(x.get_literal().unwrap() + 5) };
   assert_eq!(cursor.next_map(&mut mapper), Ok((25, ds)));
   assert_eq!(mapper_called.get(), 1);

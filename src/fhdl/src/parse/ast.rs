@@ -67,8 +67,10 @@ impl Module {
     )?;
     let ports = parse_list_paren_comma(tokens, PortDecl::parse)?;
     let stmts = parse_list_brace_semi(tokens, Stmt::parse)?;
+    tokens.rewind(1);
+    let end_span = tokens.next()?.1;
     Ok(Module {
-      span: start_span.union(todo!()),
+      span: start_span.union(end_span),
       name,
       ports,
       stmts,
@@ -144,7 +146,7 @@ impl Stmt {
       Token::Name(kw) if kw == "mem" => {
         let name = tokens.next_identifier()?.0;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::MemDecl { name }, end)
+        (Stmt::MemDecl { name }, start.union(end))
       },
       
       Token::Name(kw) if kw == "set" => {
@@ -159,12 +161,12 @@ impl Stmt {
           name,
           assign_type,
           expr,
-        }, end)
+        }, start.union(end))
       },
       
       Token::Name(kw) if kw == "wire" => {
         let name = tokens.next_identifier()?.0;
-        let (maybe_assign, maybe_end) = tokens.next()?;
+        let (maybe_assign, _) = tokens.peek()?;
         if maybe_assign != &Token::Semicolon {
           tokens.next_assert(&Token::Op(BinaryOp::Assign))?;
           let expr = Expr::parse(tokens)?;
@@ -172,12 +174,13 @@ impl Stmt {
           (Stmt::WireDecl {
             name,
             expr: Some(expr),
-          }, end)
+          }, start.union(end))
         } else {
+          let end = tokens.peek_assert(&Token::Semicolon)?;
           (Stmt::WireDecl {
             name,
             expr: None,
-          }, maybe_end)
+          }, start.union(end))
         }
       },
       
@@ -188,7 +191,7 @@ impl Stmt {
         (Stmt::ModuleInst {
           module: name,
           args,
-        }, end)
+        }, start.union(end))
       },
       
       Token::Name(kw) if kw == "trigger" => {
@@ -200,7 +203,7 @@ impl Stmt {
           watching: name,
           trigger_kind,
           statements: stmts,
-        }, end)
+        }, start.union(end))
       }
       
       _ => return Err(Cerr::UnexpectedToken(vec!["mem".into(), "set".into(), "wire".into(), "inst".into(), "trigger".into()]).with(start))
@@ -277,30 +280,12 @@ impl Expr {
       match t {
         Token::Name(name) => {
           // disambiguate between function call and variable use
-          if tokens.peek()?.0 == &Token::LParen {
-            tokens.next()?;
+          if matches!(tokens.peek_or_eof(), Some((&Token::LParen, _))) {
             // function call
-            if tokens.peek()?.0 == &Token::RParen {
-              Expr::FnCall {
-                func: name.clone(),
-                args: vec![],
-              }
-            } else {
-              // parse arguments
-              let mut args = vec![];
-              loop {
-                args.push(Expr::parse(tokens)?);
-                let (t, span) = tokens.next()?;
-                match t {
-                  Token::RParen => break,
-                  Token::Comma => continue,
-                  _ => return Err(Cerr::UnexpectedToken(vec![")".into(), ",".into()]).with(span))
-                }
-              }
-              Expr::FnCall {
-                func: name.clone(),
-                args,
-              }
+            let args = parse_list_paren_comma(tokens, Expr::parse)?;
+            Expr::FnCall {
+              func: name.clone(),
+              args,
             }
           } else {
             // peeked token is binary op or semicolon or something, anyways end of expression
@@ -315,23 +300,27 @@ impl Expr {
         Token::LParen => {
           // braced expression
           let expr = Expr::parse(tokens)?;
-          tokens.next_assert(&Token::RBrace)?;
+          tokens.next_assert(&Token::RParen)?;
           expr
         }
         _ => return Err(Cerr::InvalidExpr.with(span))
       }
     } else {
-      let car = Expr::parse(tokens)?;
+      let car = Expr::parse_with_prec(tokens, prec - 1)?;
       let mut cdr = vec![];
-      while matches!(tokens.peek()?.0, Token::Op(op) if op.precedence() == prec) {
+      while matches!(tokens.peek_or_eof(), Some((&Token::Op(op), _)) if op.precedence() == prec) {
         // unwrap: can only be op if the above matches! passes
         let op = tokens.next()?.0.get_op().unwrap();
-        let expr = Expr::parse(tokens)?;
+        let expr = Expr::parse_with_prec(tokens, prec - 1)?;
         cdr.push((op, expr));
       }
-      Expr::BinaryOps {
-        car: Box::new(car),
-        cdr,
+      if cdr.is_empty() {
+        car
+      } else {
+        Expr::BinaryOps {
+          car: Box::new(car),
+          cdr,
+        }
       }
     })
   }
@@ -349,6 +338,10 @@ fn parse_list_brace_semi<T>(tokens: &Cursor, f: impl FnMut(&Cursor) -> Result<T,
 fn parse_list<T>(tokens: &Cursor, mut f: impl FnMut(&Cursor) -> Result<T, CerrSpan>, start: &Token, end: &Token, delim: &Token) -> Result<Vec<T>, CerrSpan> {
   let mut elems = vec![];
   tokens.next_assert(start)?;
+  if tokens.peek()?.0 == end {
+    tokens.next()?;
+    return Ok(elems);
+  }
   loop {
     elems.push(f(tokens)?);
     let (token, span ) = tokens.next()?;
@@ -356,7 +349,10 @@ fn parse_list<T>(tokens: &Cursor, mut f: impl FnMut(&Cursor) -> Result<T, CerrSp
     if token == delim {
       // to handle trailing commas
       let peek = tokens.peek()?.0;
-      if peek == end { break }
+      if peek == end {
+        tokens.next()?;
+        break
+      }
       continue
     }
     return Err(Cerr::UnexpectedToken(vec![end.to_string(), delim.to_string()]).with(span));

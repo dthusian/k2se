@@ -1,5 +1,4 @@
 use std::cell::{Cell};
-use std::fmt::Display;
 use crate::err::{Cerr, CerrSpan};
 use crate::parse::span::{Span, WithSpan};
 use crate::parse::tokenizer::Token;
@@ -84,8 +83,7 @@ impl<'a> Cursor<'a> {
   
   /// Peeks the next token without taking it.
   pub fn peek(&self) -> Result<(&Token, Span), CerrSpan> {
-    self.parent.tokens.get(self.position.get())
-      .map(|v| (&v.t, v.span))
+    self.peek_or_eof()
       .ok_or(Cerr::UnexpectedEOF.into())
   }
   
@@ -96,6 +94,11 @@ impl<'a> Cursor<'a> {
     } else {
       Ok(span)
     }
+  }
+  
+  pub fn peek_or_eof(&self) -> Option<(&Token, Span)> {
+    self.parent.tokens.get(self.position.get())
+      .map(|v| (&v.t, v.span))
   }
   
   /// Returns true if there were enough elements to skip, false if EOF was
