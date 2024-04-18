@@ -22,6 +22,28 @@ pub enum Cerr {
   UnexpectedEOF,
   #[error("Invalid expression")]
   InvalidExpr,
+  
+  // Validation Errors
+  #[error("'{0}' not declared")]
+  NotDeclared(String),
+  #[error("Multiple declarations for {0}")]
+  MultipleDeclarations(String),
+  #[error("Cannot write to input port")]
+  WriteToInput,
+  #[error("Cannot write to wire which has already been '='-assigned to or connected to an output port")]
+  MultipleExclusiveWrites,
+  #[error("Cannot '='-assign memory outside of a trigger block")]
+  MemAssignOutsideOfTrigger,
+  #[error("Wrong number of arguments to module instatiation (expected {0})")]
+  WrongNumberOfModuleArgs(usize),
+  #[error("Cannot nest trigger blocks")]
+  NestedTriggerBlocks,
+  #[error("In argument {0}: cannot connect expression to out or inout port")]
+  ExprForOutInoutPort(usize),
+  
+  // Synthesis Errors (todo)
+  
+  // Layout Errors (todo)
 }
 
 impl Cerr {

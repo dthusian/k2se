@@ -5,6 +5,7 @@ mod test;
 mod err;
 mod parse;
 mod util;
+mod synth;
 
 fn main() {
     println!("Hello, world!");

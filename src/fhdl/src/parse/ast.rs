@@ -82,7 +82,7 @@ impl Module {
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct PortDecl {
   pub port_class: PortClass,
-  pub signal_class: SignalClass,
+  pub signal_class: NetType,
   pub name: String,
 }
 
@@ -90,7 +90,7 @@ impl PortDecl {
   pub fn parse(tokens: &Cursor) -> Result<Self, CerrSpan> {
     Ok(PortDecl {
       port_class: PortClass::parse(tokens)?.0,
-      signal_class: SignalClass::parse(tokens)?.0,
+      signal_class: NetType::parse(tokens)?.0,
       name: tokens.next_identifier()?.0,
     })
   }
@@ -119,7 +119,7 @@ pub enum Stmt {
   MemDecl {
     name: String,
   },
-  MemSet {
+  Set {
     name: String,
     assign_type: BinaryOp,
     expr: Expr,
@@ -158,7 +158,7 @@ impl Stmt {
           )?.0;
         let expr = Expr::parse(tokens)?;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::MemSet {
+        (Stmt::Set {
           name,
           assign_type,
           expr,
@@ -235,17 +235,17 @@ impl TriggerKind {
 }
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum SignalClass {
+pub enum NetType {
   Single,
   Mixed
 }
 
-impl SignalClass {
+impl NetType {
   pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
     tokens.next_map(|v| {
       Ok(match v {
-        Token::Name(name) if name == "single" => SignalClass::Single,
-        Token::Name(name) if name == "mixed" => SignalClass::Mixed,
+        Token::Name(name) if name == "single" => NetType::Single,
+        Token::Name(name) if name == "mixed" => NetType::Mixed,
         _ => return Err(Cerr::UnexpectedToken(vec!["in".into(), "out".into(), "inout".into()]))
       })
     })

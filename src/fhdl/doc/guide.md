@@ -7,8 +7,8 @@ This guide assumes a basic understanding of Factorio circuit networks and HDLs.
 Signals in FHDL are seperated into two types: `single` and `mixed`. `single` signals
 represent a single signal of some type that is controlled by the sythesis engine,
 while `mixed` signals represent wires that have multiple Factorio signal types on them.
-Notably, multiple `single` signals can be merged onto the same physical wire, while
-`mixed` signals cannot.
+
+In synthesis, multiple `single` wires will not be merged into one.
 
 ## Modules
 

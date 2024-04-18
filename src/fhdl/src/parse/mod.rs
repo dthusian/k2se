@@ -1,3 +1,5 @@
+//! This module hosts the lexing and parsing code for FHDL.
+
 pub mod ast;
 pub mod tokenizer;
 pub mod span;

@@ -1,6 +1,6 @@
 use std::fmt::Debug;
-use crate::err::{Cerr, CerrSpan};
-use crate::parse::ast::{Expr, Module, PortClass, PortDecl, SignalClass, Stmt, TriggerKind};
+use crate::err::{CerrSpan};
+use crate::parse::ast::{Expr, Module, PortClass, PortDecl, NetType, Stmt, TriggerKind};
 use crate::parse::span::{Pos, Span};
 use crate::parse::tokenizer::{BinaryOp, tokenize};
 use crate::parse::tokenstream::{Cursor, TokenStream};
@@ -181,7 +181,7 @@ pub fn stmt_parse_mem_decl_invalid() {
 #[test]
 pub fn stmt_parse_mem_set1() {
   let stmt = util_test_parser("set reg2 = 4 + wire1;", Stmt::parse).0;
-  let expected = Stmt::MemSet {
+  let expected = Stmt::Set {
     name: "reg2".into(),
     assign_type: BinaryOp::Assign,
     expr: Expr::BinaryOps {
@@ -195,7 +195,7 @@ pub fn stmt_parse_mem_set1() {
 #[test]
 pub fn stmt_parse_mem_set2() {
   let stmt = util_test_parser("set reg3 += delay(wire1,) ^ wire2;", Stmt::parse).0;
-  let expected = Stmt::MemSet {
+  let expected = Stmt::Set {
     name: "reg3".into(),
     assign_type: BinaryOp::AddAssign,
     expr: Expr::BinaryOps {
@@ -274,7 +274,7 @@ pub fn stmt_parse_trigger1() {
     watching: "clk".to_string(),
     trigger_kind: TriggerKind::Changed,
     statements: vec![
-      (Stmt::MemSet {
+      (Stmt::Set {
         name: "thing".to_string(),
         assign_type: BinaryOp::Assign,
         expr: Expr::Literal { val: 4 },
@@ -327,12 +327,12 @@ module foo(in single x, inout single y)
       ports: vec![
         PortDecl {
           port_class: PortClass::In,
-          signal_class: SignalClass::Single,
+          signal_class: NetType::Single,
           name: "x".into(),
         },
         PortDecl {
           port_class: PortClass::InOut,
-          signal_class: SignalClass::Single,
+          signal_class: NetType::Single,
           name: "y".into(),
         }
       ],
@@ -351,7 +351,7 @@ module foo(in single x, inout single y)
           watching: "x".into(),
           trigger_kind: TriggerKind::Increasing,
           statements: vec![
-            (Stmt::MemSet {
+            (Stmt::Set {
               name: "reg".into(),
               assign_type: BinaryOp::Assign,
               expr: Expr::Identifier {
@@ -364,7 +364,7 @@ module foo(in single x, inout single y)
             }, Span { start: Pos::new(8, 4), end: Pos::new(8, 15) })
           ],
         }, Span { start: Pos::new(6, 2), end: Pos::new(9, 3) }),
-        (Stmt::MemSet {
+        (Stmt::Set {
           name: "y".into(),
           assign_type: BinaryOp::AddAssign,
           expr: Expr::Identifier { name: "w".into() },
