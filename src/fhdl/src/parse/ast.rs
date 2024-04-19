@@ -118,6 +118,7 @@ impl PortClass {
 pub enum Stmt {
   MemDecl {
     name: String,
+    signal_class: NetType,
   },
   Set {
     name: String,
@@ -126,6 +127,7 @@ pub enum Stmt {
   },
   WireDecl {
     name: String,
+    signal_class: NetType,
     expr: Option<Expr>,
   },
   ModuleInst {
@@ -145,9 +147,10 @@ impl Stmt {
     Ok(match kw {
       
       Token::Name(kw) if kw == "mem" => {
+        let signal_class = NetType::parse(tokens)?.0;
         let name = tokens.next_identifier()?.0;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::MemDecl { name }, start.union(end))
+        (Stmt::MemDecl { name, signal_class }, start.union(end))
       },
       
       Token::Name(kw) if kw == "set" => {
@@ -166,6 +169,7 @@ impl Stmt {
       },
       
       Token::Name(kw) if kw == "wire" => {
+        let signal_class = NetType::parse(tokens)?.0;
         let name = tokens.next_identifier()?.0;
         let (maybe_assign, _) = tokens.peek()?;
         if maybe_assign != &Token::Semicolon {
@@ -174,12 +178,14 @@ impl Stmt {
           let end = tokens.peek_assert(&Token::Semicolon)?;
           (Stmt::WireDecl {
             name,
+            signal_class,
             expr: Some(expr),
           }, start.union(end))
         } else {
           let end = tokens.peek_assert(&Token::Semicolon)?;
           (Stmt::WireDecl {
             name,
+            signal_class,
             expr: None,
           }, start.union(end))
         }
@@ -246,7 +252,7 @@ impl NetType {
       Ok(match v {
         Token::Name(name) if name == "single" => NetType::Single,
         Token::Name(name) if name == "mixed" => NetType::Mixed,
-        _ => return Err(Cerr::UnexpectedToken(vec!["in".into(), "out".into(), "inout".into()]))
+        _ => return Err(Cerr::UnexpectedToken(vec!["single".into(), "mixed".into()]))
       })
     })
   }

@@ -78,7 +78,7 @@ fn collect_module_inputs(state: &mut ModuleValidationState, module: &(Module, Sp
 fn collect_decls(state: &mut ModuleValidationState, stmts: &[(Stmt, Span)], in_trigger: bool) {
   stmts.into_iter().for_each(|(stmt, span)| {
     match stmt {
-      Stmt::MemDecl { name } => {
+      Stmt::MemDecl { name, .. } => {
         let prev = state.objects.insert(name.clone(), ObjectInfo {
           mem: true,
           input: false,
@@ -133,7 +133,7 @@ fn validate_stmt(state: &mut ModuleValidationState, stmt: &(Stmt, Span), in_trig
       }
       validate_expr(state, expr, span);
     }
-    Stmt::WireDecl { name, expr } => {
+    Stmt::WireDecl { name, expr, .. } => {
       if let Some(expr) = expr {
         state.objects.get_mut(name).unwrap().exclusive_write = true;
         validate_expr(state, expr, span);

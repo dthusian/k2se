@@ -9,7 +9,7 @@ module-port = port-class, [ signal-class ], identifier;
 port-class = "in" | "out" | "inout";
 
 stmt = mem-decl | mem-set | wire-decl | module-inst | trigger;
-mem-decl = "mem", identifier, ";";
+mem-decl = "mem", signal-class, identifier, ";";
 mem-set = "set", identifier, "+=" | "=", expr, ";";
 wire-decl = "wire", signal-class, identifier, [ "=", expr ], ";";
 module-inst = "inst", identifier, "(", [ expr ], { "," , expr }, ")", ";";

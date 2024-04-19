@@ -19,6 +19,7 @@ pub fn validate_undeclared() {
     stmts: vec![
       (Stmt::WireDecl {
         name: "wire1".into(),
+        signal_class: NetType::Single,
         expr: Some(Expr::BinaryOps {
           car: Box::new(Expr::Identifier { name: "undeclared1".into() }),
           cdr: vec![(BinaryOp::Add, Expr::Literal { val: 2 })],
@@ -76,24 +77,30 @@ pub fn validate_multiple_decl() {
       stmts: vec![
         (Stmt::WireDecl {
           name: "multi4".into(),
+          signal_class: NetType::Single,
           expr: None,
         }, ds),
         (Stmt::MemDecl {
           name: "multi4".into(),
+          signal_class: NetType::Single,
         }, ds),
         (Stmt::WireDecl {
           name: "multi3".into(),
+          signal_class: NetType::Single,
           expr: None,
         }, ds),
         (Stmt::WireDecl {
           name: "multi3".into(),
+          signal_class: NetType::Single,
           expr: None,
         }, ds),
         (Stmt::MemDecl {
           name: "multi5".into(),
+          signal_class: NetType::Single,
         }, ds),
         (Stmt::MemDecl {
           name: "multi5".into(),
+          signal_class: NetType::Single,
         }, ds),
       ],
     }, ds)
@@ -145,6 +152,7 @@ pub fn validate_multiple_excl_assign() {
     stmts: vec![
       (Stmt::WireDecl {
         name: "w1".into(),
+        signal_class: NetType::Single,
         expr: None,
       }, ds),
       (Stmt::Set {
@@ -159,6 +167,7 @@ pub fn validate_multiple_excl_assign() {
       }, ds),
       (Stmt::WireDecl {
         name: "w2".into(),
+        signal_class: NetType::Single,
         expr: Some(Expr::Literal { val: 4 }),
       }, ds),
       (Stmt::Set {
@@ -218,6 +227,7 @@ pub fn validate_bare_mem_assign() {
     stmts: vec![
       (Stmt::MemDecl {
         name: "reg".into(),
+        signal_class: NetType::Single,
       }, ds),
       (Stmt::Set {
         name: "reg".into(),
@@ -259,6 +269,7 @@ pub fn validate_arity_mismatch() {
       stmts: vec![
         (Stmt::WireDecl {
           name: "w1".into(),
+          signal_class: NetType::Single,
           expr: None,
         }, ds),
         (Stmt::ModuleInst {

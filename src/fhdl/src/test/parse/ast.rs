@@ -166,16 +166,17 @@ pub fn expr_parse_invalid5() {
 
 #[test]
 pub fn stmt_parse_mem_decl() {
-  let stmt = util_test_parser("mem reg1;", Stmt::parse).0;
+  let stmt = util_test_parser("mem single reg1;", Stmt::parse).0;
   let expected = Stmt::MemDecl {
     name: "reg1".into(),
+    signal_class: NetType::Single,
   };
   assert_eq!(stmt, expected);
 }
 
 #[test]
 pub fn stmt_parse_mem_decl_invalid() {
-  util_test_parser_err("mem reg1 = 4;", Stmt::parse);
+  util_test_parser_err("mem mixed reg1 = 4;", Stmt::parse);
 }
 
 #[test]
@@ -216,9 +217,10 @@ pub fn stmt_parse_mem_set_invalid() {
 
 #[test]
 pub fn stmt_parse_wire_decl1() {
-  let stmt = util_test_parser("wire wire4 = 2 + 2;", Stmt::parse).0;
+  let stmt = util_test_parser("wire single wire4 = 2 + 2;", Stmt::parse).0;
   let expected = Stmt::WireDecl {
     name: "wire4".into(),
+    signal_class: NetType::Single,
     expr: Some(Expr::BinaryOps {
       car: Box::new(Expr::Literal { val: 2 }),
       cdr: vec![(BinaryOp::Add, Expr::Literal { val: 2 })],
@@ -229,9 +231,10 @@ pub fn stmt_parse_wire_decl1() {
 
 #[test]
 pub fn stmt_parse_wire_decl2() {
-  let stmt = util_test_parser("wire wire5;", Stmt::parse).0;
+  let stmt = util_test_parser("wire mixed wire5;", Stmt::parse).0;
   let expected = Stmt::WireDecl {
     name: "wire5".into(),
+    signal_class: NetType::Mixed,
     expr: None,
   };
   assert_eq!(stmt, expected);
@@ -269,7 +272,7 @@ pub fn stmt_parse_inst2() {
 
 #[test]
 pub fn stmt_parse_trigger1() {
-  let stmt = util_test_parser("trigger clk changed { set thing = 4; wire unused; };", Stmt::parse).0;
+  let stmt = util_test_parser("trigger clk changed { set thing = 4; wire mixed unused; };", Stmt::parse).0;
   let expected = Stmt::Trigger {
     watching: "clk".to_string(),
     trigger_kind: TriggerKind::Changed,
@@ -281,8 +284,9 @@ pub fn stmt_parse_trigger1() {
       }, Span { start: Pos::new(1, 22), end: Pos::new(1, 35) }),
       (Stmt::WireDecl {
         name: "unused".to_string(),
+        signal_class: NetType::Mixed,
         expr: None,
-      }, Span { start: Pos::new(1, 37), end: Pos::new(1, 48) })
+      }, Span { start: Pos::new(1, 37), end: Pos::new(1, 54) })
     ],
   };
   assert_eq!(stmt, expected);
@@ -290,22 +294,22 @@ pub fn stmt_parse_trigger1() {
 
 #[test]
 pub fn stmt_parse_trigger_invalid1() {
-  util_test_parser_err("trigger wire2 boo { set thing = 4; wire unused; };", Stmt::parse);
+  util_test_parser_err("trigger wire2 boo { set thing = 4; wire single unused; };", Stmt::parse);
 }
 
 #[test]
 pub fn stmt_parse_trigger_invalid2() {
-  util_test_parser_err("trigger wire2 boo { set thing = 4; wire unused };", Stmt::parse);
+  util_test_parser_err("trigger wire2 boo { set thing = 4; wire single unused };", Stmt::parse);
 }
 
 #[test]
 pub fn stmt_parse_trigger_invalid3() {
-  util_test_parser_err("trigger wire2 boo { set thing = 4 wire unused; };", Stmt::parse);
+  util_test_parser_err("trigger wire2 boo { set thing = 4 wire single unused; };", Stmt::parse);
 }
 
 #[test]
 pub fn stmt_parse_trigger_invalid4() {
-  util_test_parser_err("trigger wire2 boo { set thing = 4; wire unused; }", Stmt::parse);
+  util_test_parser_err("trigger wire2 boo { set thing = 4; wire single unused; }", Stmt::parse);
 }
 
 #[test]
@@ -313,11 +317,11 @@ pub fn module_parse_valid() {
   let module = util_test_parser("// commen
 module foo(in single x, inout single y)
 {
-  mem reg;
-  wire w = x + y;
+  mem single reg;
+  wire single w = x + y;
   trigger x increasing {
     set reg = y;
-    wire unused;
+    wire single unused;
   };
   set y += w; } // comment
 ", Module::parse);
@@ -339,14 +343,16 @@ module foo(in single x, inout single y)
       stmts: vec![
         (Stmt::MemDecl {
           name: "reg".into(),
-        }, Span { start: Pos::new(4, 2), end: Pos::new(4, 9) }),
+          signal_class: NetType::Single,
+        }, Span { start: Pos::new(4, 2), end: Pos::new(4, 16) }),
         (Stmt::WireDecl {
           name: "w".into(),
+          signal_class: NetType::Single,
           expr: Some(Expr::BinaryOps {
             car: Box::new(Expr::Identifier { name: "x".into() }),
             cdr: vec![(BinaryOp::Add, Expr::Identifier { name: "y".into() })],
           }),
-        }, Span { start: Pos::new(5, 2), end: Pos::new(5, 16) }),
+        }, Span { start: Pos::new(5, 2), end: Pos::new(5, 23) }),
         (Stmt::Trigger {
           watching: "x".into(),
           trigger_kind: TriggerKind::Increasing,
@@ -360,8 +366,9 @@ module foo(in single x, inout single y)
             }, Span { start: Pos::new(7, 4), end: Pos::new(7, 15) }),
             (Stmt::WireDecl {
               name: "unused".into(),
+              signal_class: NetType::Single,
               expr: None,
-            }, Span { start: Pos::new(8, 4), end: Pos::new(8, 15) })
+            }, Span { start: Pos::new(8, 4), end: Pos::new(8, 22) })
           ],
         }, Span { start: Pos::new(6, 2), end: Pos::new(9, 3) }),
         (Stmt::Set {

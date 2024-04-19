@@ -41,7 +41,9 @@ pub enum Cerr {
   #[error("In argument {0}: cannot connect expression to out or inout port")]
   ExprForOutInoutPort(usize),
   
-  // Synthesis Errors (todo)
+  // Synthesis Errors
+  #[error("Main module '{0}' not found")]
+  MainNotFound(String),
   
   // Layout Errors (todo)
 }

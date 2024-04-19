@@ -1,7 +1,9 @@
 use crate::parse::tokenizer::BinaryOp;
+use crate::synth::netlist::NetID;
 
 /// Represents any combinator or circuit computational entity.
 /// If there's a 2-array of input nets, the convention is `[red, green]`.
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Combinator {
   /// Represents an arithmetic or decider combinator.
   Vanilla(VanillaCombinator),
@@ -10,10 +12,11 @@ pub enum Combinator {
 }
 
 /// Represents an arithmetic or decider combinator.
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct VanillaCombinator {
   pub op: VanillaCombinatorOp,
-  pub input_nets: [Option<usize>; 2],
-  pub output_nets: [Option<usize>; 2],
+  pub input_nets: [Option<NetID>; 2],
+  pub output_nets: [Option<NetID>; 2],
   pub input_signals: [SignalRef; 2],
   pub output_signal: SignalRef,
   /// Refers to whether the "input count" setting is enabled on a decider combinator.
@@ -21,11 +24,14 @@ pub struct VanillaCombinator {
 }
 
 /// Represents a constant combinator.
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct ConstantCombinator {
-  pub output_nets: [Option<usize>; 2],
+  pub enabled: bool,
+  pub output_nets: [Option<NetID>; 2],
   pub output_signals: [Option<SignalWithCount>; 20]
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum VanillaCombinatorOp {
   Add,
   Sub,
@@ -74,20 +80,24 @@ impl TryFrom<BinaryOp> for VanillaCombinatorOp {
   }
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum SignalType {
   Item, Fluid, Virtual
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Signal {
   pub ty: SignalType,
   pub name: String,
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct SignalWithCount {
   pub signal: Signal,
   pub count: i32,
 }
 
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum SignalRef {
   Anything,
   Each,
