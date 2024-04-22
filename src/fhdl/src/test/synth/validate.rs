@@ -2,7 +2,7 @@ use crate::err::Cerr;
 use crate::parse::ast::{Expr, Module, NetType, PortClass, PortDecl, Stmt, TriggerKind};
 use crate::parse::span::Span;
 use crate::parse::tokenizer::BinaryOp;
-use crate::synth::validate::validate_modules;
+use crate::synth::validate::transform_modules;
 
 #[test]
 pub fn validate_undeclared() {
@@ -41,7 +41,7 @@ pub fn validate_undeclared() {
       }, ds),
     ],
   }, ds)];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::NotDeclared("undeclared1".into()).with(ds),
     Cerr::NotDeclared("undeclared2".into()).with(ds),
@@ -105,7 +105,7 @@ pub fn validate_multiple_decl() {
       ],
     }, ds)
   ];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::MultipleDeclarations("multi1".into()).with(ds),
     Cerr::MultipleDeclarations("multi2".into()).with(ds),
@@ -136,7 +136,7 @@ pub fn validate_writes_to_input() {
       }, ds)
     ],
   }, ds)];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::WriteToInput.with(ds)
   ];
@@ -177,7 +177,7 @@ pub fn validate_multiple_excl_assign() {
       }, ds)
     ],
   }, ds)];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::MultipleExclusiveWrites.with(ds),
     Cerr::MultipleExclusiveWrites.with(ds)
@@ -211,7 +211,7 @@ pub fn validate_nested_trigger() {
       }, ds)
     ],
   }, ds)];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::NestedTriggerBlocks.with(ds)
   ];
@@ -236,7 +236,7 @@ pub fn validate_bare_mem_assign() {
       }, ds),
     ],
   }, ds)];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::MemAssignOutsideOfTrigger.with(ds)
   ];
@@ -283,7 +283,7 @@ pub fn validate_arity_mismatch() {
       ],
     }, ds),
   ];
-  let errs = validate_modules(&ast);
+  let errs = transform_modules(&ast).1;
   let expected = vec![
     Cerr::WrongNumberOfModuleArgs(2).with(ds)
   ];

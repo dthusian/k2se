@@ -5,3 +5,4 @@ pub mod combinator;
 pub mod synth;
 pub mod validate;
 mod ir;
+mod builtins;

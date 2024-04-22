@@ -55,9 +55,11 @@ pub fn synthesize(settings: &SynthSettings, modules: &[(Module, Span)]) -> Resul
     .zip(settings.main_module_conn_signals.iter())
     .map(|(port, signal)| {
       if port.signal_class == NetType::Single {
-        state.alloc_net(port.signal_class, WireColor::Red, Some(signal.clone()))
+        (state.alloc_net(port.signal_class, WireColor::Red, Some(signal.clone())),
+        state.alloc_net(port.signal_class, WireColor::Green, Some(signal.clone())))
       } else {
-        state.alloc_net(port.signal_class, WireColor::Red, None)
+        (state.alloc_net(port.signal_class, WireColor::Red, None),
+        state.alloc_net(port.signal_class, WireColor::Green, None))
       }
     })
     .collect::<Vec<_>>();
@@ -142,6 +144,8 @@ fn synthesize_module(state: &mut SynthState, name: &str, arg_nets: &[(NetID, Net
     inc_module: vec![],
   };
   let (module, span) = state.collected_modules.get(name).unwrap();
+  let module = *module;
+  let span = *span;
   
   // collect input module ports into incompletenet instances
   collect_ports_to_inc_nets(state, &mut mod_state, &module.ports, arg_nets);
@@ -193,7 +197,7 @@ fn presynth_wire_mem_decls(mod_state: &mut ModuleSynthState, stmts: &[(Stmt, Spa
           })
         }
         Stmt::WireDecl { name, signal_class, .. } => {
-          mod_state.new_net(name, *signal_class);
+          mod_state.new_nets(name, *signal_class);
         }
         _ => {}
       }

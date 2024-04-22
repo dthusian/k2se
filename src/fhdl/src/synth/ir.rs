@@ -3,22 +3,40 @@
 //! trigger blocks are refactored to only contain set statements, and trigger
 //! conditions are synthesized. Additionally, type checking is done.
 
-use crate::parse::ast::NetType;
+use std::collections::HashMap;
+use crate::parse::ast::{NetType};
 
 pub struct IRModule {
-  pub wire_decls: Vec<IRWireMemDecl>,
-  pub mem_decls: Vec<IRWireMemDecl>,
+  pub objects: HashMap<String, IRWireMemDecl>,
   pub stmts: Vec<IRStmt>,
-  pub triggers: Vec<IRStmt>
+  pub trigger_stmt: Vec<IRTriggerStmt>,
+  pub module_inst: Vec<IRModuleInst>
 }
 
 pub struct IRWireMemDecl {
-  pub name: String,
-  pub ty: NetType
+  pub ty: NetType,
+  pub mem: bool,
+  pub port_idx: Option<usize>
 }
 
 pub struct IRStmt {
   pub dest: String,
   pub op: String,
+  pub args: Vec<IRNetOrLiteral>
+}
+
+pub enum IRNetOrLiteral {
+  Net(String),
+  Lit(i32)
+}
+
+pub struct IRTriggerStmt {
+  pub dest: String,
+  pub src: String,
+  pub on: String,
+}
+
+pub struct IRModuleInst {
+  pub name: String,
   pub args: Vec<String>
 }
