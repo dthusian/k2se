@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::err::{Cerr, CerrSpan};
 use crate::parse::ast::{Expr, Module, NetType, PortDecl, Stmt};
 use crate::parse::span::Span;
-use crate::synth::combinator::Signal;
+use crate::synth::combinator::{Combinator, Signal, SignalRef, VanillaCombinator, VanillaCombinatorOp};
 use crate::synth::netlist::{Net, NetID, Netlist, WireColor};
 
 pub struct SynthSettings {
@@ -74,85 +74,184 @@ fn collect_modules(modules: &[(Module, Span)]) -> HashMap<String, (&Module, Span
 }
 
 type IncompleteNetID = usize;
+type IncompleteNetPair = (IncompleteNetID, IncompleteNetID);
 /// The synthesis code needs to first map out all nets and dependencies between them
 /// in order to allocate wire colours and signals. To do this, it creates
 /// `IncompleteNet` instances, resolving colors and signals, then adding them to the netlist.
 struct IncompleteNet {
-  different_color_as_net: Vec<IncompleteNetID>,
   different_signal_as_net: Vec<IncompleteNetID>,
-  resolved_color: Option<WireColor>,
   resolved_signal: Option<Signal>,
+  color: WireColor,
   ty: NetType,
 }
 
-fn synthesize_module(state: &mut SynthState, name: &str, arg_nets: &[NetID]) -> Result<(), CerrSpan> {
-  let mut inc_nets = vec![];
-  let mut inc_net_map = HashMap::<String, IncompleteNetID>::new();
-  let mut net_map = HashMap::<String, NetID>::new();
+struct IncompleteCombinator {
+  c: Combinator,
+  in_r: Option<IncompleteNetID>,
+  in_g: Option<IncompleteNetID>,
+  out_r: Option<IncompleteNetID>,
+  out_g: Option<IncompleteNetID>
+}
+
+struct IncompleteModule {
+  module: String,
+  args: Vec<IncompleteNetPair>
+}
+
+struct ModuleSynthState {
+  inc_nets: Vec<IncompleteNet>,
+  inc_net_map: HashMap<String, IncompleteNetPair>,
+  inc_combinator: Vec<IncompleteCombinator>,
+  inc_module: Vec<IncompleteModule>
+}
+
+impl ModuleSynthState {
+  pub fn new_nets_resolved(&mut self, name: &str, net_type: NetType, resolved_signal: (Option<Signal>, Option<Signal>)) -> IncompleteNetPair {
+    let new_net = self.new_nets_unnamed(net_type, resolved_signal);
+    self.inc_net_map.insert(name.to_owned(), new_net);
+    new_net
+  }
+  
+  pub fn new_nets(&mut self, name: &str, net_type: NetType) -> IncompleteNetPair {
+    self.new_nets_resolved(name, net_type, (None, None))
+  }
+  
+  pub fn new_nets_unnamed(&mut self, net_type: NetType, resolved_signal: (Option<Signal>, Option<Signal>)) -> IncompleteNetPair {
+    let ids = (self.inc_nets.len(), self.inc_nets.len() + 1);
+    self.inc_nets.push(IncompleteNet {
+      different_signal_as_net: vec![],
+      resolved_signal: resolved_signal.0,
+      color: WireColor::Red,
+      ty: net_type,
+    });
+    self.inc_nets.push(IncompleteNet {
+      different_signal_as_net: vec![],
+      resolved_signal: resolved_signal.1,
+      color: WireColor::Green,
+      ty: net_type,
+    });
+    ids
+  }
+}
+
+fn synthesize_module(state: &mut SynthState, name: &str, arg_nets: &[(NetID, NetID)]) -> Result<(), CerrSpan> {
+  let mut mod_state = ModuleSynthState {
+    inc_nets: vec![],
+    inc_net_map: HashMap::new(),
+    inc_combinator: vec![],
+    inc_module: vec![],
+  };
   let (module, span) = state.collected_modules.get(name).unwrap();
   
-  // collect module ports into incompletenet instances
-  //collect_ports_to_inc_nets();
+  // collect input module ports into incompletenet instances
+  collect_ports_to_inc_nets(state, &mut mod_state, &module.ports, arg_nets);
   
-  // collect wire and mem decl nets into incomplete nets
-  presynth_wire_mem_decls(&module.stmts, &mut inc_nets, &mut inc_net_map);
+  // collect wire mem decls
+  presynth_wire_mem_decls(&mut mod_state, &module.stmts);
   
   // run expr presynth
+  presynth_exprs(state, &mut mod_state, &module.stmts, None);
   
-  // resolve net colors and signals
+  // resolve signals
+  resolve_signals(&mut mod_state);
   
-  // convert all `IncompleteNet`s to real nets
-  
-  // run expr synth
+  // convert all `IncompleteNet`s to real nets, and also synth inner modules
+  complete_nets(mod_state);
   
   Ok(())
 }
 
-fn collect_ports_to_inc_nets(state: &mut SynthState, ports: &[PortDecl], arg_nets: &[NetID], inc_nets: &mut Vec<IncompleteNet>, inc_net_map: &mut HashMap<String, IncompleteNetID>) {
+fn collect_ports_to_inc_nets(state: &mut SynthState, mod_state: &mut ModuleSynthState, ports: &[PortDecl], arg_nets: &[(NetID, NetID)]) {
   ports.iter()
     .zip(arg_nets.iter())
-    .for_each(|(port, net_id)| {
-      let net = &state.netlist.nets[*net_id];
-      todo!()
+    .for_each(|(port, (net_id_r, net_id_g))| {
+      let net_red = &state.netlist.nets[*net_id_r];
+      let net_green = &state.netlist.nets[*net_id_g];
+      mod_state.new_nets_resolved(&port.name, port.signal_class, (net_red.signal.clone(), net_green.signal.clone()));
     })
 }
 
-fn presynth_wire_mem_decls(stmts: &[(Stmt, Span)], inc_nets: &mut Vec<IncompleteNet>, inc_net_map: &mut HashMap<String, IncompleteNetID>) {
+fn presynth_wire_mem_decls(mod_state: &mut ModuleSynthState, stmts: &[(Stmt, Span)]) {
   stmts.iter()
     .for_each(|(stmt, _)| {
       match stmt {
         Stmt::MemDecl { name, signal_class } => {
-          inc_net_map.insert(name.clone(), inc_nets.len());
-          inc_nets.push(IncompleteNet {
-            different_color_as_net: vec![],
-            different_signal_as_net: vec![],
-            resolved_color: None,
-            resolved_signal: None,
-            ty: *signal_class,
-          });
-        }
-        Stmt::WireDecl { name, signal_class, expr } => {
-          inc_net_map.insert(name.clone(), inc_nets.len());
-          inc_nets.push(IncompleteNet {
-            different_color_as_net: vec![],
-            different_signal_as_net: vec![],
-            resolved_color: None,
-            resolved_signal: None,
-            ty: *signal_class,
+          let nets = mod_state.new_nets(name, *signal_class);
+          mod_state.inc_combinator.push(IncompleteCombinator {
+            c: Combinator::Vanilla(VanillaCombinator {
+              op: VanillaCombinatorOp::Eq,
+              input_nets: [None, None],
+              output_nets: [None, None],
+              input_signals: [SignalRef::Const(0), SignalRef::Const(0)],
+              output_signal: SignalRef::Anything,
+              output_count: true,
+            }),
+            in_r: Some(nets.0),
+            in_g: None, // green is not self-fed because it would double-feed it
+            out_r: Some(nets.0),
+            out_g: Some(nets.1),
           })
         }
-        Stmt::Trigger { statements, .. } => {
-          presynth_wire_mem_decls(statements, inc_nets, inc_net_map);
+        Stmt::WireDecl { name, signal_class, .. } => {
+          mod_state.new_net(name, *signal_class);
         }
         _ => {}
       }
     });
 }
 
-fn presynth_expr(expr: &Expr, inc_nets: &mut Vec<IncompleteNet>, inc_net_map: &HashMap<String, IncompleteNetID>, assign_result_to: IncompleteNetID) -> Result<(), CerrSpan> {
+fn presynth_exprs(state: &SynthState, mod_state: &mut ModuleSynthState, stmts: &[(Stmt, Span)], on_trigger: Option<IncompleteNetPair>) {
+  stmts.iter()
+    .for_each(|(stmt, _)| {
+      match stmt {
+        Stmt::MemDecl { .. } => {}
+        Stmt::Set { name, expr, .. } => {
+          let dest_nets = mod_state.inc_net_map[name];
+          presynth_expr(mod_state, expr, dest_nets);
+        }
+        Stmt::WireDecl { name, expr, signal_class } => {
+          let dest_nets = mod_state.inc_net_map[name];
+          expr.as_ref().map(|v| {
+            presynth_expr(mod_state, v, dest_nets);
+          });
+        }
+        Stmt::ModuleInst { module, args } => {
+          let arg_nets = args.iter().enumerate().map(|(i, v)| {
+            match v {
+              Expr::Identifier { name } => {
+                mod_state.inc_net_map[name]
+              }
+              _ => {
+                let module = state.collected_modules[module].0;
+                let new_net = mod_state.new_nets_unnamed(module.ports[i].signal_class, (None, None));
+                presynth_expr(mod_state, v, new_net);
+                new_net
+              }
+            }
+          }).collect::<Vec<_>>();
+          mod_state.inc_module.push(IncompleteModule {
+            module: module.clone(),
+            args: arg_nets,
+          })
+        }
+        Stmt::Trigger { watching, trigger_kind, statements } => {
+          //todo synth the trigger stuff
+          presynth_exprs(state, mod_state, statements, None); //todo change this to Some when trigger stuff is synthed
+        }
+      }
+    });
+}
+
+fn presynth_expr(mod_state: &mut ModuleSynthState, expr: &Expr, assign_result_to: IncompleteNetPair) {
   todo!()
 }
 
-fn synth_expr(expr: &Expr, nets: &mut Vec<Net>, assign_result_to: IncompleteNetID) -> Result<(), CerrSpan> {
+fn resolve_signals(mod_state: &mut ModuleSynthState) {
+  todo!()
+}
+
+// consumes mod_state because it's the last operation and mod_state
+// becomes de-facto invalid after this operation
+fn complete_nets(mod_state: ModuleSynthState) {
   todo!()
 }

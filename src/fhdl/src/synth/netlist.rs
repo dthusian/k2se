@@ -15,6 +15,7 @@ pub struct Netlist {
   pub combinator_modpath: Vec<Vec<usize>>
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Net {
   pub ty: NetType,
   pub color: WireColor,
@@ -27,6 +28,7 @@ pub struct Net {
   pub out_conn: Vec<(CombinatorID, usize)>,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WireColor {
   Red, Green
 }
