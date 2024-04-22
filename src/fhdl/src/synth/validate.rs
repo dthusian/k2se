@@ -13,7 +13,7 @@ struct GlobalValidationState<'a> {
 /// Tracks module-wide validation state.
 struct ModuleValidationState<'a, 'b> {
   global: &'b mut GlobalValidationState<'a>,
-  objects: HashMap<String, ObjectInfo>
+  objects: HashMap<String, ObjectInfo>,
 }
 
 struct ObjectInfo {
