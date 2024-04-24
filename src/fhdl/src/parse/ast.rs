@@ -266,6 +266,9 @@ pub enum Expr {
   Literal {
     val: i32,
   },
+  StringLiteral {
+    str: String,
+  },
   FnCall {
     func: String,
     args: Vec<Expr>,
@@ -304,6 +307,10 @@ impl Expr {
           // literal expression
           Expr::Literal { val: *i }
         }
+        Token::String(s) => {
+          // string literal
+          Expr::StringLiteral { str: s.clone() }
+        }
         Token::LParen => {
           // braced expression
           let expr = Expr::parse(tokens)?;
@@ -330,6 +337,20 @@ impl Expr {
         }
       }
     })
+  }
+  
+  pub fn into_ident(self) -> Option<String> {
+    match self {
+      Expr::Identifier { name } => Some(name),
+      _ => None
+    }
+  }
+  
+  pub fn as_ident(&self) -> Option<&String> {
+    match self {
+      Expr::Identifier { name } => Some(name),
+      _ => None
+    }
   }
 }
 

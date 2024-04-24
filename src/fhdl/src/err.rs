@@ -2,6 +2,7 @@ use std::fmt::{Debug, Display, Formatter, Write};
 use std::num::ParseIntError;
 use thiserror::Error;
 use crate::parse::span::{Pos, Span};
+use crate::parse::tokenizer::BinaryOp;
 
 #[derive(Error, Debug, Clone, Eq, PartialEq)]
 pub enum Cerr {
@@ -40,6 +41,20 @@ pub enum Cerr {
   NestedTriggerBlocks,
   #[error("In argument {0}: cannot connect expression to out or inout port")]
   ExprForOutInoutPort(usize),
+  #[error("Type error: {0}")]
+  TypeErrorGeneric(TypeError),
+  #[error("Type error: In argument {0} of function '{1}': {2}")]
+  TypeErrArgMismatch(usize, String, TypeError),
+  #[error("In argument {0} of function {1}: Expected string literal")]
+  ExpectedString(usize, String),
+  #[error("Unexpected string literal")]
+  UnexpectedString,
+  #[error("Unknown function '{0}'")]
+  UnknownFunction(String),
+  #[error("Wrong number of function args (expected {0})")]
+  WrongNumberOfFunctionArgs(usize),
+  #[error("Cannot use op {0} on two mixed nets")]
+  InvalidOpOnMixedNets(BinaryOp),
   
   // Synthesis Errors
   #[error("Main module '{0}' not found")]
@@ -101,5 +116,17 @@ impl Display for CerrSpan {
 impl From<Cerr> for CerrSpan {
   fn from(value: Cerr) -> Self {
     CerrSpan::without_span(value)
+  }
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct TypeError {
+  pub src_ty: String,
+  pub dst_ty: String,
+}
+
+impl Display for TypeError {
+  fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+    write!(f, "found type {:?} but expected type {:?}", self.src_ty, self.dst_ty)
   }
 }

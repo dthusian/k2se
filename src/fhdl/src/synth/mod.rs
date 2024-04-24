@@ -3,6 +3,6 @@
 pub mod netlist;
 pub mod combinator;
 pub mod synth;
-pub mod validate;
-mod ir;
-mod builtins;
+pub mod transform;
+pub mod ir;
+pub mod builtins;

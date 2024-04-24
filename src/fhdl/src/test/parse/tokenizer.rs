@@ -46,7 +46,7 @@ pub fn tokenize_valid1() {
 
 #[test]
 pub fn tokenize_valid2() {
-  let tokens = util_tokenize("z// boo\n==( abs//\n( // comment \n re ( z ) )//\n+i*abs ( im(z)) )** 2 +c; // foo\n")
+  let tokens = util_tokenize("z// boo\n==( abs//\n( // comment \n re ( z ) )//\n+i*abs ( im(z)) )** 2 +c; string//\n=\"b//\nn\" ;// foo\n")
     .pretty_unwrap();
   let expected = vec![
     Token::Name("z".into()),
@@ -74,6 +74,10 @@ pub fn tokenize_valid2() {
     Token::Literal(2),
     Token::Op(BinaryOp::Add),
     Token::Name("c".into()),
+    Token::Semicolon,
+    Token::Name("string".into()),
+    Token::Op(BinaryOp::Assign),
+    Token::String("b//\nn".into()),
     Token::Semicolon
   ];
   assert_eq!(tokens, expected)

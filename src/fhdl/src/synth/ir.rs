@@ -22,12 +22,23 @@ pub struct IRWireMemDecl {
 pub struct IRStmt {
   pub dest: String,
   pub op: String,
-  pub args: Vec<IRNetOrLiteral>
+  pub args: Vec<IRValue>
 }
 
-pub enum IRNetOrLiteral {
+pub enum IRValue {
   Net(String),
-  Lit(i32)
+  Lit(i32),
+  Str(String)
+}
+
+impl IRValue {
+  pub fn into_net(self) -> Option<String> {
+    match self {
+      IRValue::Net(net) => Some(net),
+      IRValue::Lit(_) => None,
+      IRValue::Str(_) => None,
+    }
+  }
 }
 
 pub struct IRTriggerStmt {

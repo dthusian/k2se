@@ -143,9 +143,8 @@ fn synthesize_module(state: &mut SynthState, name: &str, arg_nets: &[(NetID, Net
     inc_combinator: vec![],
     inc_module: vec![],
   };
-  let (module, span) = state.collected_modules.get(name).unwrap();
+  let (module, _) = state.collected_modules.get(name).unwrap();
   let module = *module;
-  let span = *span;
   
   // collect input module ports into incompletenet instances
   collect_ports_to_inc_nets(state, &mut mod_state, &module.ports, arg_nets);

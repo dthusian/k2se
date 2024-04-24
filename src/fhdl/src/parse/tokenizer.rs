@@ -11,6 +11,7 @@ use crate::parse::span::{Pos, Span, WithSpan};
 pub enum Token {
   Name(String),
   Literal(i32),
+  String(String),
   LParen,
   RParen,
   LBrace,
@@ -24,6 +25,7 @@ impl Display for Token {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
     match self {
       Token::Name(s) => f.write_str(s),
+      Token::String(s) => write!(f, "\"{}\"", s),
       Token::Literal(i) => write!(f, "{}", i),
       Token::LParen => f.write_char('('),
       Token::RParen => f.write_char(')'),
@@ -192,6 +194,7 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
   }
   
   /// Reads as many characters as possible that satisfy a predicate.
+  /// Does not take the character that fails the predicate.
   /// Returns the position of the last taken character. Returns `None`
   /// if nothing was read.
   fn take_while_span(&mut self, mut pred: impl FnMut(char) -> bool) -> Option<(Span, String)> {
@@ -241,6 +244,18 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
     util_inject_span(res, span)
   }
   
+  /// Reads a string literal.
+  fn parse_string_literal(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
+    let (start_pos, start_char) = self._next().unwrap();
+    assert_eq!(start_char, '"');
+    let (_, str) = self.take_while_span(|v| v != '"')
+      .ok_or::<CerrSpan>(Cerr::UnexpectedEOF.into())?;
+    let (end_pos, end_char) = self._next()
+      .ok_or::<CerrSpan>(Cerr::UnexpectedEOF.into())?;
+    assert_eq!(end_char, '"');
+    Ok(WithSpan::new(Span { start: start_pos, end: end_pos }, Token::String(str)))
+  }
+  
   /// Reads an operator or skips a comment. Returns None if a comment was matched.
   fn parse_op_or_comment(&mut self) -> Option<Result<WithSpan<Token>, CerrSpan>> {
     let (span, s) = self.take_while_span(|c| is_op(c))
@@ -269,6 +284,9 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
       if char::is_ascii_whitespace(&peek) {
         self._next();
         continue;
+      }
+      if peek == '"' {
+        return Some(self.parse_string_literal())
       }
       if is_op(peek) {
         if let Some(op) = self.parse_op_or_comment() {

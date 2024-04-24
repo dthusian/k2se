@@ -140,6 +140,24 @@ pub fn expr_parse_valid_brackets() {
 }
 
 #[test]
+pub fn expr_parse_valid_strings() {
+  let expr = util_test_parser("func(1 +\" strig\")** \"st 2\"", Expr::parse);
+  let expected = Expr::BinaryOps {
+    car: Box::new(Expr::FnCall {
+      func: "func".into(),
+      args: vec![Expr::BinaryOps {
+        car: Box::new(Expr::Literal { val: 1 }),
+        cdr: vec![(BinaryOp::Add, Expr::StringLiteral { str: " strig".into() })],
+      }],
+    }),
+    cdr: vec![(BinaryOp::Pow, Expr::StringLiteral {
+      str: "st 2".into(),
+    })],
+  };
+  assert_eq!(expr, expected);
+}
+
+#[test]
 pub fn expr_parse_invalid1() {
   util_test_parser_err("a + + 3", Expr::parse);
 }
