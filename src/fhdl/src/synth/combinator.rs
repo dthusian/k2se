@@ -8,7 +8,7 @@ pub enum Combinator {
   /// Represents an arithmetic or decider combinator.
   Vanilla(VanillaCombinator),
   /// Represents a constant combinator.
-  Constant(ConstantCombinator)
+  Constant(ConstantCombinator),
 }
 
 /// Represents an arithmetic or decider combinator.
@@ -23,12 +23,25 @@ pub struct VanillaCombinator {
   pub output_count: bool,
 }
 
+impl Default for VanillaCombinator {
+  fn default() -> Self {
+    VanillaCombinator {
+      op: VanillaCombinatorOp::Add,
+      input_nets: [None, None],
+      output_nets: [None, None],
+      input_signals: [SignalRef::Each, SignalRef::Const(0)],
+      output_signal: SignalRef::Each,
+      output_count: false,
+    }
+  }
+}
+
 /// Represents a constant combinator.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct ConstantCombinator {
   pub enabled: bool,
   pub output_nets: [Option<NetID>; 2],
-  pub output_signals: [Option<SignalWithCount>; 20]
+  pub output_signals: [Option<SignalWithCount>; 20],
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -49,7 +62,7 @@ pub enum VanillaCombinatorOp {
   Gt,
   Lt,
   Ge,
-  Le
+  Le,
 }
 
 impl TryFrom<BinaryOp> for VanillaCombinatorOp {
@@ -82,13 +95,24 @@ impl TryFrom<BinaryOp> for VanillaCombinatorOp {
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum SignalType {
-  Item, Fluid, Virtual
+  Item,
+  Fluid,
+  Virtual,
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Signal {
   pub ty: SignalType,
   pub name: String,
+}
+
+impl Default for Signal {
+  fn default() -> Self {
+    Signal {
+      ty: SignalType::Virtual,
+      name: "".into(),
+    }
+  }
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -103,5 +127,5 @@ pub enum SignalRef {
   Each,
   Everything,
   Signal(Signal),
-  Const(i32)
+  Const(i32),
 }

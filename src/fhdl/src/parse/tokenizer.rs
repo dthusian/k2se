@@ -1,10 +1,10 @@
+use crate::err::{Cerr, CerrSpan};
+use crate::parse::iter_with_pos::{with_pos, WithPos};
+use crate::parse::span::{Pos, Span, WithSpan};
+use crate::util::imp_iter::{imperative, ImperativeIterator};
 use std::fmt::{Display, Formatter, Write};
 use std::iter::Peekable;
 use std::str::FromStr;
-use crate::err::{Cerr, CerrSpan};
-use crate::util::imp_iter::{imperative, ImperativeIterator};
-use crate::parse::iter_with_pos::{with_pos, WithPos};
-use crate::parse::span::{Pos, Span, WithSpan};
 
 /// Represents a token.
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -18,7 +18,7 @@ pub enum Token {
   RBrace,
   Comma,
   Semicolon,
-  Op(BinaryOp)
+  Op(BinaryOp),
 }
 
 impl Display for Token {
@@ -43,25 +43,25 @@ impl Token {
   pub fn name(s: &str) -> Self {
     Token::Name(s.into())
   }
-  
+
   pub fn get_name(&self) -> Option<&str> {
     match self {
       Token::Name(s) => Some(s.as_str()),
-      _ => None
+      _ => None,
     }
   }
-  
+
   pub fn get_literal(&self) -> Option<i32> {
     match self {
       Token::Literal(x) => Some(*x),
       _ => None,
     }
   }
-  
+
   pub fn get_op(&self) -> Option<BinaryOp> {
     match self {
       Token::Op(op) => Some(*op),
-      _ => None
+      _ => None,
     }
   }
 }
@@ -75,7 +75,7 @@ impl Token {
 /// - 5: And, Or, Xor
 /// - 6: Eq, Ne, Lt, Gt, Le, Ge
 /// - None (99): Assign, AddAssign
-/// 
+///
 /// The last two operators are not allowed in general exprs
 /// and as such are given placeholder precedences lower than anything else.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -124,7 +124,7 @@ impl Display for BinaryOp {
       BinaryOp::Le => "<=",
       BinaryOp::Ge => ">=",
       BinaryOp::Assign => "=",
-      BinaryOp::AddAssign => "+="
+      BinaryOp::AddAssign => "+=",
     })
   }
 }
@@ -151,10 +151,10 @@ impl BinaryOp {
       ">=" => BinaryOp::Ge,
       "=" => BinaryOp::Assign,
       "+=" => BinaryOp::AddAssign,
-      _ => return Err(Cerr::InvalidOperator)
+      _ => return Err(Cerr::InvalidOperator),
     })
   }
-  
+
   pub fn precedence(self) -> u32 {
     match self {
       BinaryOp::Add => 3,
@@ -175,7 +175,7 @@ impl BinaryOp {
       BinaryOp::Le => 6,
       BinaryOp::Ge => 6,
       BinaryOp::Assign => 99,
-      BinaryOp::AddAssign => 99
+      BinaryOp::AddAssign => 99,
     }
   }
 }
@@ -188,11 +188,11 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
   fn _next(&mut self) -> Option<(Pos, char)> {
     self.i.next()
   }
-  
+
   fn _peek(&mut self) -> Option<(Pos, char)> {
     self.i.peek().copied()
   }
-  
+
   /// Reads as many characters as possible that satisfy a predicate.
   /// Does not take the character that fails the predicate.
   /// Returns the position of the last taken character. Returns `None`
@@ -207,25 +207,25 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
           start: buf[0].0,
           end: buf[buf.len() - 1].0,
         },
-        buf.iter().map(|v| v.1).collect::<String>()
+        buf.iter().map(|v| v.1).collect::<String>(),
       ))
     }
   }
-  
+
   /// Reads an name from the input stream. Panics if the stream is not at a name.
   fn parse_name(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
-    let (span, s) = self.take_while_span(|c| is_ident(c))
-      .expect("Not a name");
+    let (span, s) = self.take_while_span(|c| is_ident(c)).expect("Not a name");
     Ok(WithSpan {
       span,
       t: Token::Name(s),
     })
   }
-  
+
   /// Reads an integer literal from the input stream. Returns a Result if integer parsing failed.
   /// Panics if the stream is not at an integer literal.
   fn parse_literal(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
-    let (span, s) = self.take_while_span(|c| is_ident(c))
+    let (span, s) = self
+      .take_while_span(|c| is_ident(c))
       .expect("Not a literal");
     let discrim = s.chars().nth(1);
     let is_hex = discrim.map(|v| v == 'x' || v == 'X').unwrap_or(false);
@@ -239,32 +239,40 @@ impl<I: Iterator<Item = char>> Tokenize<I> {
     } else {
       i64::from_str(&s)
     }
-      .map_err(|v| v.into() )
-      .map(|v| Token::Literal(v as i32));
+    .map_err(|v| v.into())
+    .map(|v| Token::Literal(v as i32));
     util_inject_span(res, span)
   }
-  
+
   /// Reads a string literal.
   fn parse_string_literal(&mut self) -> Result<WithSpan<Token>, CerrSpan> {
     let (start_pos, start_char) = self._next().unwrap();
     assert_eq!(start_char, '"');
-    let (_, str) = self.take_while_span(|v| v != '"')
+    let (_, str) = self
+      .take_while_span(|v| v != '"')
       .ok_or::<CerrSpan>(Cerr::UnexpectedEOF.into())?;
-    let (end_pos, end_char) = self._next()
-      .ok_or::<CerrSpan>(Cerr::UnexpectedEOF.into())?;
+    let (end_pos, end_char) = self._next().ok_or::<CerrSpan>(Cerr::UnexpectedEOF.into())?;
     assert_eq!(end_char, '"');
-    Ok(WithSpan::new(Span { start: start_pos, end: end_pos }, Token::String(str)))
+    Ok(WithSpan::new(
+      Span {
+        start: start_pos,
+        end: end_pos,
+      },
+      Token::String(str),
+    ))
   }
-  
+
   /// Reads an operator or skips a comment. Returns None if a comment was matched.
   fn parse_op_or_comment(&mut self) -> Option<Result<WithSpan<Token>, CerrSpan>> {
-    let (span, s) = self.take_while_span(|c| is_op(c))
-      .expect("Not an operator");
+    let (span, s) = self.take_while_span(|c| is_op(c)).expect("Not an operator");
     if s.starts_with("//") {
       self.take_while_span(|c| c != '\n');
       None
     } else {
-      Some(util_inject_span(BinaryOp::parse_raw(&s).map(Token::Op), span))
+      Some(util_inject_span(
+        BinaryOp::parse_raw(&s).map(Token::Op),
+        span,
+      ))
     }
   }
 }
@@ -276,35 +284,38 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
     loop {
       let (pos, peek) = self._peek()?;
       if is_ident_start(peek) {
-        return Some(self.parse_name())
+        return Some(self.parse_name());
       }
       if char::is_ascii_digit(&peek) {
-        return Some(self.parse_literal())
+        return Some(self.parse_literal());
       }
       if char::is_ascii_whitespace(&peek) {
         self._next();
         continue;
       }
       if peek == '"' {
-        return Some(self.parse_string_literal())
+        return Some(self.parse_string_literal());
       }
       if is_op(peek) {
         if let Some(op) = self.parse_op_or_comment() {
-          return Some(op)
+          return Some(op);
         } else {
           continue;
         }
       }
       self._next().unwrap();
-      return Some(match peek {
-        '{' => Ok(Token::LBrace),
-        '}' => Ok(Token::RBrace),
-        '(' => Ok(Token::LParen),
-        ')' => Ok(Token::RParen),
-        ';' => Ok(Token::Semicolon),
-        ',' => Ok(Token::Comma),
-        _ => Err(CerrSpan::new(pos.into(), Cerr::InvalidChar)),
-      }.map(|v| WithSpan::new(pos.into(), v)))
+      return Some(
+        match peek {
+          '{' => Ok(Token::LBrace),
+          '}' => Ok(Token::RBrace),
+          '(' => Ok(Token::LParen),
+          ')' => Ok(Token::RParen),
+          ';' => Ok(Token::Semicolon),
+          ',' => Ok(Token::Comma),
+          _ => Err(CerrSpan::new(pos.into(), Cerr::InvalidChar)),
+        }
+        .map(|v| WithSpan::new(pos.into(), v)),
+      );
     }
   }
 }
@@ -312,7 +323,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenize<I> {
 pub fn tokenize<I: Iterator<Item = char>>(iter: I) -> Tokenize<I> {
   return Tokenize {
     i: imperative(with_pos(iter).peekable()),
-  }
+  };
 }
 
 /// Matches characters that can be the start of an identifier.
@@ -329,7 +340,7 @@ fn is_ident(c: char) -> bool {
 fn is_op(c: char) -> bool {
   match c {
     '+' | '-' | '*' | '/' | '%' | '&' | '|' | '^' | '=' | '!' | '<' | '>' => true,
-    _ => false
+    _ => false,
   }
 }
 

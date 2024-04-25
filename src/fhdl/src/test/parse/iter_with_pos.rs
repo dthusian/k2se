@@ -9,12 +9,10 @@ pub fn test_iter_pos1() {
     (Pos::new(1, 1), 'A'),
     (Pos::new(1, 2), 'D'),
     (Pos::new(1, 3), '\n'),
-    
     (Pos::new(2, 0), 'I'),
     (Pos::new(2, 1), 'O'),
     (Pos::new(2, 2), 'H'),
     (Pos::new(2, 3), '\n'),
-
     (Pos::new(3, 0), 'E'),
     (Pos::new(3, 1), 'A'),
     (Pos::new(3, 2), 'D'),

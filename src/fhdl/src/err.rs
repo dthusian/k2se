@@ -1,8 +1,8 @@
+use crate::parse::span::{Pos, Span};
+use crate::parse::tokenizer::BinaryOp;
 use std::fmt::{Debug, Display, Formatter, Write};
 use std::num::ParseIntError;
 use thiserror::Error;
-use crate::parse::span::{Pos, Span};
-use crate::parse::tokenizer::BinaryOp;
 
 #[derive(Error, Debug, Clone, Eq, PartialEq)]
 pub enum Cerr {
@@ -13,7 +13,7 @@ pub enum Cerr {
   InvalidInteger(#[from] ParseIntError),
   #[error("Invalid operator")]
   InvalidOperator,
-  
+
   // AST Parse Errors
   #[error("Unexpected token, expected one of {0:?}")]
   UnexpectedToken(Vec<String>),
@@ -23,7 +23,7 @@ pub enum Cerr {
   UnexpectedEOF,
   #[error("Invalid expression")]
   InvalidExpr,
-  
+
   // Validation Errors
   #[error("'{0}' not declared")]
   NotDeclared(String),
@@ -31,7 +31,9 @@ pub enum Cerr {
   MultipleDeclarations(String),
   #[error("Cannot write to input port")]
   WriteToInput,
-  #[error("Cannot write to wire which has already been '='-assigned to or connected to an output port")]
+  #[error(
+    "Cannot write to wire which has already been '='-assigned to or connected to an output port"
+  )]
   MultipleExclusiveWrites,
   #[error("Cannot '='-assign memory outside of a trigger block")]
   MemAssignOutsideOfTrigger,
@@ -55,11 +57,10 @@ pub enum Cerr {
   WrongNumberOfFunctionArgs(usize),
   #[error("Cannot use op {0} on two mixed nets")]
   InvalidOpOnMixedNets(BinaryOp),
-  
+
   // Synthesis Errors
   #[error("Main module '{0}' not found")]
   MainNotFound(String),
-  
   // Layout Errors (todo)
 }
 
@@ -82,26 +83,43 @@ impl CerrSpan {
       cerr,
     }
   }
-  
+
   pub fn without_span(cerr: Cerr) -> Self {
-    CerrSpan {
-      span: None,
-      cerr,
-    }
+    CerrSpan { span: None, cerr }
   }
-  
+
   pub fn format_err(&self, filename: &str, source: &[&str]) -> Result<String, std::fmt::Error> {
-    let span = self.span.unwrap_or_else(
-      || Span::from(Pos::new(source.len() as u32, (source[source.len() - 1].len() - 1) as u32))
-    );
+    let span = self.span.unwrap_or_else(|| {
+      Span::from(Pos::new(
+        source.len() as u32,
+        (source[source.len() - 1].len() - 1) as u32,
+      ))
+    });
     let mut s = String::new();
-    writeln!(&mut s, "at {}:{}:{}: {}", filename, span.start.line, span.start.col, self.cerr)?;
+    writeln!(
+      &mut s,
+      "at {}:{}:{}: {}",
+      filename, span.start.line, span.start.col, self.cerr
+    )?;
     for i in span.start.line..=span.end.line {
       let i = i as usize;
-      let cstart = if i == span.start.line as usize { span.start.col as usize } else { 0usize };
-      let cend = if i == span.end.line as usize { span.end.col as usize } else { source[i].len() - 1 };
+      let cstart = if i == span.start.line as usize {
+        span.start.col as usize
+      } else {
+        0usize
+      };
+      let cend = if i == span.end.line as usize {
+        span.end.col as usize
+      } else {
+        source[i].len() - 1
+      };
       writeln!(&mut s, "  {}", source[i - 1])?;
-      writeln!(&mut s, "  {}{}", " ".repeat(cstart), "^".repeat(cend - cstart + 1))?;
+      writeln!(
+        &mut s,
+        "  {}{}",
+        " ".repeat(cstart),
+        "^".repeat(cend - cstart + 1)
+      )?;
     }
     Ok(s)
   }
@@ -109,7 +127,15 @@ impl CerrSpan {
 
 impl Display for CerrSpan {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "{:?}", self)
+    if let Some(span) = self.span {
+      write!(
+        f,
+        "at {}:{} - {}:{}: {}",
+        span.start.line, span.start.col, span.end.line, span.end.col, self.cerr
+      )
+    } else {
+      write!(f, "at unknown: {}", self.cerr)
+    }
   }
 }
 
@@ -127,6 +153,10 @@ pub struct TypeError {
 
 impl Display for TypeError {
   fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-    write!(f, "found type {:?} but expected type {:?}", self.src_ty, self.dst_ty)
+    write!(
+      f,
+      "found type {:?} but expected type {:?}",
+      self.src_ty, self.dst_ty
+    )
   }
 }

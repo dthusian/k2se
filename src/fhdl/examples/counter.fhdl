@@ -1,0 +1,13 @@
+version 2;
+
+module counter(in single reset, out single output) {
+  // counter
+  mem single counter;
+  set counter += 1;
+  set output = counter;
+  // reset logic
+  wire single reset2 = reset == 0;
+  trigger reset2 raw {
+    set counter = 0;
+  };
+}

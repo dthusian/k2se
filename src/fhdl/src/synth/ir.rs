@@ -3,32 +3,38 @@
 //! trigger blocks are refactored to only contain set statements, and trigger
 //! conditions are synthesized. Additionally, type checking is done.
 
+use crate::parse::ast::{NetType, PortDecl};
 use std::collections::HashMap;
-use crate::parse::ast::{NetType};
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IRModule {
+  pub name: String,
+  pub ports: Vec<PortDecl>,
   pub objects: HashMap<String, IRWireMemDecl>,
   pub stmts: Vec<IRStmt>,
   pub trigger_stmt: Vec<IRTriggerStmt>,
-  pub module_inst: Vec<IRModuleInst>
+  pub module_inst: Vec<IRModuleInst>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IRWireMemDecl {
   pub ty: NetType,
   pub mem: bool,
-  pub port_idx: Option<usize>
+  pub port_idx: Option<usize>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IRStmt {
   pub dest: String,
   pub op: String,
-  pub args: Vec<IRValue>
+  pub args: Vec<IRValue>,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum IRValue {
   Net(String),
   Lit(i32),
-  Str(String)
+  Str(String),
 }
 
 impl IRValue {
@@ -41,13 +47,15 @@ impl IRValue {
   }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IRTriggerStmt {
   pub dest: String,
   pub src: String,
   pub on: String,
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct IRModuleInst {
   pub name: String,
-  pub args: Vec<String>
+  pub args: Vec<String>,
 }

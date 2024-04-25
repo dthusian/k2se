@@ -1,15 +1,15 @@
 //! AST parsing. All structs here are part of the AST, and
-//! have a parse function that returns `Self` or `(Self, Span)`. 
+//! have a parse function that returns `Self` or `(Self, Span)`.
 
 use crate::err::{Cerr, CerrSpan};
-use crate::parse::span::{Span};
+use crate::parse::span::Span;
 use crate::parse::tokenizer::{BinaryOp, Token};
 use crate::parse::tokenstream::Cursor;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Program {
   pub version: Version,
-  pub modules: Vec<(Module, Span)>
+  pub modules: Vec<(Module, Span)>,
 }
 
 impl Program {
@@ -18,25 +18,23 @@ impl Program {
     let mut modules = vec![];
     loop {
       let peeker = tokens.clone();
-      let Some((token, span)) = peeker.next_or_eof() else { break; };
+      let Some((token, span)) = peeker.next_or_eof() else {
+        break;
+      };
       match &token {
         Token::Name(name) if name == "module" => {
           modules.push(Module::parse(tokens)?);
         }
-        _ => return Err(Cerr::UnexpectedToken(vec!["module".into()]).with(span))
+        _ => return Err(Cerr::UnexpectedToken(vec!["module".into()]).with(span)),
       }
     }
-    Ok(Program {
-      version,
-      modules,
-    })
+    Ok(Program { version, modules })
   }
 }
 
-
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum Version {
-  V2
+  V2,
 }
 
 impl Version {
@@ -45,8 +43,9 @@ impl Version {
     let (ver, span) = tokens.next()?;
     match ver {
       Token::Literal(2) => Version::V2,
-      _ => return Err(Cerr::UnexpectedToken(vec!["2".into()]).with(span))
+      _ => return Err(Cerr::UnexpectedToken(vec!["2".into()]).with(span)),
     };
+    tokens.next_assert(&Token::Semicolon)?;
     Ok(Version::V2)
   }
 }
@@ -55,27 +54,22 @@ impl Version {
 pub struct Module {
   pub name: String,
   pub ports: Vec<PortDecl>,
-  pub stmts: Vec<(Stmt, Span)>
+  pub stmts: Vec<(Stmt, Span)>,
 }
 
 impl Module {
   pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
     let start_span = tokens.next_assert(&Token::Name("module".into()))?;
-    let (name, _) = tokens.next_map(
-      |v| v
-        .get_name()
+    let (name, _) = tokens.next_map(|v| {
+      v.get_name()
         .map(|v| v.to_owned())
         .ok_or(Cerr::UnexpectedTokenType("identifier"))
-    )?;
+    })?;
     let ports = parse_list_paren_comma(tokens, PortDecl::parse)?;
     let stmts = parse_list_brace_semi(tokens, Stmt::parse)?;
     tokens.rewind(1);
     let end_span = tokens.next()?.1;
-    Ok((Module {
-      name,
-      ports,
-      stmts,
-    }, start_span.union(end_span)))
+    Ok((Module { name, ports, stmts }, start_span.union(end_span)))
   }
 }
 
@@ -98,7 +92,9 @@ impl PortDecl {
 
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum PortClass {
-  In, Out, InOut,
+  In,
+  Out,
+  InOut,
 }
 
 impl PortClass {
@@ -108,7 +104,13 @@ impl PortClass {
         Token::Name(name) if name == "in" => PortClass::In,
         Token::Name(name) if name == "out" => PortClass::Out,
         Token::Name(name) if name == "inout" => PortClass::InOut,
-        _ => return Err(Cerr::UnexpectedToken(vec!["in".into(), "out".into(), "inout".into()]))
+        _ => {
+          return Err(Cerr::UnexpectedToken(vec![
+            "in".into(),
+            "out".into(),
+            "inout".into(),
+          ]))
+        }
       })
     })
   }
@@ -137,37 +139,41 @@ pub enum Stmt {
   Trigger {
     watching: String,
     trigger_kind: TriggerKind,
-    statements: Vec<(Stmt, Span)>
-  }
+    statements: Vec<(Stmt, Span)>,
+  },
 }
 
 impl Stmt {
   pub fn parse(tokens: &Cursor) -> Result<(Self, Span), CerrSpan> {
     let (kw, start) = tokens.next()?;
     Ok(match kw {
-      
       Token::Name(kw) if kw == "mem" => {
         let signal_class = NetType::parse(tokens)?.0;
         let name = tokens.next_identifier()?.0;
         let end = tokens.peek_assert(&Token::Semicolon)?;
         (Stmt::MemDecl { name, signal_class }, start.union(end))
-      },
-      
+      }
+
       Token::Name(kw) if kw == "set" => {
         let name = tokens.next_identifier()?.0;
-        let assign_type = tokens.next_map(|v|
-          v.get_op()
-            .ok_or(Cerr::UnexpectedToken(vec!["=".into(), "+=".into()]))
-          )?.0;
+        let assign_type = tokens
+          .next_map(|v| {
+            v.get_op()
+              .ok_or(Cerr::UnexpectedToken(vec!["=".into(), "+=".into()]))
+          })?
+          .0;
         let expr = Expr::parse(tokens)?;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::Set {
-          name,
-          assign_type,
-          expr,
-        }, start.union(end))
-      },
-      
+        (
+          Stmt::Set {
+            name,
+            assign_type,
+            expr,
+          },
+          start.union(end),
+        )
+      }
+
       Token::Name(kw) if kw == "wire" => {
         let signal_class = NetType::parse(tokens)?.0;
         let name = tokens.next_identifier()?.0;
@@ -176,44 +182,61 @@ impl Stmt {
           tokens.next_assert(&Token::Op(BinaryOp::Assign))?;
           let expr = Expr::parse(tokens)?;
           let end = tokens.peek_assert(&Token::Semicolon)?;
-          (Stmt::WireDecl {
-            name,
-            signal_class,
-            expr: Some(expr),
-          }, start.union(end))
+          (
+            Stmt::WireDecl {
+              name,
+              signal_class,
+              expr: Some(expr),
+            },
+            start.union(end),
+          )
         } else {
           let end = tokens.peek_assert(&Token::Semicolon)?;
-          (Stmt::WireDecl {
-            name,
-            signal_class,
-            expr: None,
-          }, start.union(end))
+          (
+            Stmt::WireDecl {
+              name,
+              signal_class,
+              expr: None,
+            },
+            start.union(end),
+          )
         }
-      },
-      
+      }
+
       Token::Name(kw) if kw == "inst" => {
         let name = tokens.next_identifier()?.0;
         let args = parse_list_paren_comma(tokens, Expr::parse)?;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::ModuleInst {
-          module: name,
-          args,
-        }, start.union(end))
-      },
-      
+        (Stmt::ModuleInst { module: name, args }, start.union(end))
+      }
+
       Token::Name(kw) if kw == "trigger" => {
         let name = tokens.next_identifier()?.0;
         let trigger_kind = TriggerKind::parse(tokens)?.0;
         let stmts = parse_list_brace_semi(tokens, Stmt::parse)?;
         let end = tokens.peek_assert(&Token::Semicolon)?;
-        (Stmt::Trigger {
-          watching: name,
-          trigger_kind,
-          statements: stmts,
-        }, start.union(end))
+        (
+          Stmt::Trigger {
+            watching: name,
+            trigger_kind,
+            statements: stmts,
+          },
+          start.union(end),
+        )
       }
-      
-      _ => return Err(Cerr::UnexpectedToken(vec!["mem".into(), "set".into(), "wire".into(), "inst".into(), "trigger".into()]).with(start))
+
+      _ => {
+        return Err(
+          Cerr::UnexpectedToken(vec![
+            "mem".into(),
+            "set".into(),
+            "wire".into(),
+            "inst".into(),
+            "trigger".into(),
+          ])
+          .with(start),
+        )
+      }
     })
   }
 }
@@ -234,7 +257,14 @@ impl TriggerKind {
         Token::Name(name) if name == "decreasing" => TriggerKind::Decreasing,
         Token::Name(name) if name == "changed" => TriggerKind::Changed,
         Token::Name(name) if name == "raw" => TriggerKind::Raw,
-        _ => return Err(Cerr::UnexpectedToken(vec!["increasing".into(), "decreasing".into(), "changed".into(), "raw".into()]))
+        _ => {
+          return Err(Cerr::UnexpectedToken(vec![
+            "increasing".into(),
+            "decreasing".into(),
+            "changed".into(),
+            "raw".into(),
+          ]))
+        }
       })
     })
   }
@@ -243,7 +273,7 @@ impl TriggerKind {
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub enum NetType {
   Single,
-  Mixed
+  Mixed,
 }
 
 impl NetType {
@@ -252,7 +282,7 @@ impl NetType {
       Ok(match v {
         Token::Name(name) if name == "single" => NetType::Single,
         Token::Name(name) if name == "mixed" => NetType::Mixed,
-        _ => return Err(Cerr::UnexpectedToken(vec!["single".into(), "mixed".into()]))
+        _ => return Err(Cerr::UnexpectedToken(vec!["single".into(), "mixed".into()])),
       })
     })
   }
@@ -275,7 +305,7 @@ pub enum Expr {
   },
   BinaryOps {
     car: Box<Expr>,
-    cdr: Vec<(BinaryOp, Expr)>
+    cdr: Vec<(BinaryOp, Expr)>,
   },
 }
 
@@ -317,7 +347,7 @@ impl Expr {
           tokens.next_assert(&Token::RParen)?;
           expr
         }
-        _ => return Err(Cerr::InvalidExpr.with(span))
+        _ => return Err(Cerr::InvalidExpr.with(span)),
       }
     } else {
       let car = Expr::parse_with_prec(tokens, prec - 1)?;
@@ -338,32 +368,43 @@ impl Expr {
       }
     })
   }
-  
+
   pub fn into_ident(self) -> Option<String> {
     match self {
       Expr::Identifier { name } => Some(name),
-      _ => None
+      _ => None,
     }
   }
-  
+
   pub fn as_ident(&self) -> Option<&String> {
     match self {
       Expr::Identifier { name } => Some(name),
-      _ => None
+      _ => None,
     }
   }
 }
 
-
-fn parse_list_paren_comma<T>(tokens: &Cursor, f: impl FnMut(&Cursor) -> Result<T, CerrSpan>) -> Result<Vec<T>, CerrSpan> {
+fn parse_list_paren_comma<T>(
+  tokens: &Cursor,
+  f: impl FnMut(&Cursor) -> Result<T, CerrSpan>,
+) -> Result<Vec<T>, CerrSpan> {
   parse_list(tokens, f, &Token::LParen, &Token::RParen, &Token::Comma)
 }
 
-fn parse_list_brace_semi<T>(tokens: &Cursor, f: impl FnMut(&Cursor) -> Result<T, CerrSpan>) -> Result<Vec<T>, CerrSpan> {
+fn parse_list_brace_semi<T>(
+  tokens: &Cursor,
+  f: impl FnMut(&Cursor) -> Result<T, CerrSpan>,
+) -> Result<Vec<T>, CerrSpan> {
   parse_list(tokens, f, &Token::LBrace, &Token::RBrace, &Token::Semicolon)
 }
 
-fn parse_list<T>(tokens: &Cursor, mut f: impl FnMut(&Cursor) -> Result<T, CerrSpan>, start: &Token, end: &Token, delim: &Token) -> Result<Vec<T>, CerrSpan> {
+fn parse_list<T>(
+  tokens: &Cursor,
+  mut f: impl FnMut(&Cursor) -> Result<T, CerrSpan>,
+  start: &Token,
+  end: &Token,
+  delim: &Token,
+) -> Result<Vec<T>, CerrSpan> {
   let mut elems = vec![];
   tokens.next_assert(start)?;
   if tokens.peek()?.0 == end {
@@ -372,16 +413,18 @@ fn parse_list<T>(tokens: &Cursor, mut f: impl FnMut(&Cursor) -> Result<T, CerrSp
   }
   loop {
     elems.push(f(tokens)?);
-    let (token, span ) = tokens.next()?;
-    if token == end { break }
+    let (token, span) = tokens.next()?;
+    if token == end {
+      break;
+    }
     if token == delim {
       // to handle trailing commas
       let peek = tokens.peek()?.0;
       if peek == end {
         tokens.next()?;
-        break
+        break;
       }
-      continue
+      continue;
     }
     return Err(Cerr::UnexpectedToken(vec![end.to_string(), delim.to_string()]).with(span));
   }

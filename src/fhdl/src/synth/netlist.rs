@@ -1,18 +1,21 @@
-use crate::parse::ast::{NetType};
+use crate::parse::ast::NetType;
 use crate::synth::combinator::{Combinator, Signal};
 
 pub type NetID = usize;
 pub type CombinatorID = usize;
 
 /// Holds a synthesized netlist.
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Netlist {
   /// A list of nets.
   pub nets: Vec<Net>,
+  /// A list of external connections.
+  pub net_external_conn: Vec<ExternalConn>,
   /// A list of combinators that connect to the nets.
   pub combinators: Vec<Combinator>,
   /// Denotes through which modules a combinator was instantiated.
-  /// Can be used by layout code to optimize placement. 
-  pub combinator_modpath: Vec<Vec<usize>>
+  /// Can be used by layout code to optimize placement.
+  pub combinator_modpath: Vec<Vec<usize>>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -28,8 +31,16 @@ pub struct Net {
   pub out_conn: Vec<(CombinatorID, usize)>,
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum WireColor {
-  Red, Green
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ExternalConn {
+  pub red_net: NetID,
+  pub green_net: NetID,
+  pub name: [char; 4],
+  pub signal: Option<Signal>,
 }
 
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum WireColor {
+  Red,
+  Green,
+}

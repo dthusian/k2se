@@ -3,7 +3,7 @@ use std::iter::Peekable;
 /// An iterator that supports an imperative iterator style.
 /// Useful for parsers, where there is heterogenous iterator use.
 pub struct ImperativeIterator<I: Iterator> {
-  i: Peekable<I>
+  i: Peekable<I>,
 }
 
 impl<I: Iterator> Iterator for ImperativeIterator<I> {
@@ -20,7 +20,7 @@ impl<I: Iterator> ImperativeIterator<I> {
   pub fn peek(&mut self) -> Option<&I::Item> {
     self.i.peek()
   }
-  
+
   /// Takes elements while a predicate is true and returns a Vec.
   /// Named `imp_take_while` to avoid conflicts with [`Iterator::take_while`].
   pub fn imp_take_while(&mut self, mut pred: impl FnMut(&I::Item) -> bool) -> Vec<I::Item> {
@@ -40,7 +40,7 @@ impl<I: Iterator> ImperativeIterator<I> {
     }
     buf
   }
-  
+
   /// Takes a fixed number of elements (or however many are left) and returns it in a Vec.
   pub fn take_n(&mut self, n: usize) -> Vec<I::Item> {
     let mut b = vec![];
@@ -48,7 +48,7 @@ impl<I: Iterator> ImperativeIterator<I> {
       if let Some(el) = self.i.next() {
         b.push(el);
       } else {
-        break
+        break;
       }
     }
     b

@@ -3,7 +3,7 @@ use crate::parse::span::Pos;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct WithPos<I: Iterator<Item = char>> {
   i: I,
-  pos: Pos
+  pos: Pos,
 }
 
 impl<I: Iterator<Item = char>> Iterator for WithPos<I> {
@@ -27,5 +27,8 @@ impl<I: Iterator<Item = char>> Iterator for WithPos<I> {
 }
 
 pub fn with_pos<I: Iterator<Item = char>>(i: I) -> WithPos<I> {
-  WithPos { i, pos: Pos::new(1, 0) }
+  WithPos {
+    i,
+    pos: Pos::new(1, 0),
+  }
 }

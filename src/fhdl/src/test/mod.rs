@@ -1,3 +1,4 @@
+mod informal;
 mod parse;
-mod util;
 mod synth;
+mod util;

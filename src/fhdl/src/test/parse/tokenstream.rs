@@ -1,8 +1,8 @@
-use std::cell::Cell;
-use crate::err::{Cerr};
+use crate::err::Cerr;
 use crate::parse::span::{Span, WithSpan};
 use crate::parse::tokenizer::Token;
 use crate::parse::tokenstream::TokenStream;
+use std::cell::Cell;
 
 #[test]
 pub fn cursor_next() {
@@ -11,7 +11,7 @@ pub fn cursor_next() {
     WithSpan::new(ds, Token::Literal(7)),
     WithSpan::new(ds, Token::Literal(6)),
     WithSpan::new(ds, Token::Literal(3)),
-    WithSpan::new(ds, Token::Literal(1))
+    WithSpan::new(ds, Token::Literal(1)),
   ]);
   let cursor = s.begin();
   assert_eq!(cursor.next(), Ok((&Token::Literal(7), ds)));
@@ -39,11 +39,14 @@ pub fn cursor_next_assert() {
   let ds = Span::default();
   let s = TokenStream::from_tokens(vec![
     WithSpan::new(ds, Token::Literal(20)),
-    WithSpan::new(ds, Token::Literal(40))
+    WithSpan::new(ds, Token::Literal(40)),
   ]);
   let cursor = s.begin();
   assert_eq!(cursor.next_assert(&Token::Literal(20)), Ok(ds));
-  assert_eq!(cursor.next_assert(&Token::Literal(20)), Err(Cerr::UnexpectedToken(vec!["20".into()]).with(ds)))
+  assert_eq!(
+    cursor.next_assert(&Token::Literal(20)),
+    Err(Cerr::UnexpectedToken(vec!["20".into()]).with(ds))
+  )
 }
 
 #[test]
@@ -51,11 +54,14 @@ pub fn cursor_next_map() {
   let ds = Span::default();
   let s = TokenStream::from_tokens(vec![
     WithSpan::new(ds, Token::Literal(20)),
-    WithSpan::new(ds, Token::Literal(40))
+    WithSpan::new(ds, Token::Literal(40)),
   ]);
   let cursor = s.begin();
   let mapper_called = Cell::new(0);
-  let mut mapper = |x: &Token| { mapper_called.set(mapper_called.get() + 1); Ok(x.get_literal().unwrap() + 5) };
+  let mut mapper = |x: &Token| {
+    mapper_called.set(mapper_called.get() + 1);
+    Ok(x.get_literal().unwrap() + 5)
+  };
   assert_eq!(cursor.next_map(&mut mapper), Ok((25, ds)));
   assert_eq!(mapper_called.get(), 1);
   assert_eq!(cursor.next_map(&mut mapper), Ok((45, ds)));
@@ -67,10 +73,13 @@ pub fn cursor_next_identifier() {
   let ds = Span::default();
   let s = TokenStream::from_tokens(vec![
     WithSpan::new(ds, Token::Literal(20)),
-    WithSpan::new(ds, Token::Name("ident".into()))
+    WithSpan::new(ds, Token::Name("ident".into())),
   ]);
   let cursor = s.begin();
-  assert_eq!(cursor.next_identifier(), Err(Cerr::UnexpectedTokenType("identifier").with(ds)));
+  assert_eq!(
+    cursor.next_identifier(),
+    Err(Cerr::UnexpectedTokenType("identifier").with(ds))
+  );
   assert_eq!(cursor.next_identifier(), Ok(("ident".into(), ds)))
 }
 
@@ -81,7 +90,7 @@ pub fn cursor_peek() {
     WithSpan::new(ds, Token::Literal(7)),
     WithSpan::new(ds, Token::Literal(6)),
     WithSpan::new(ds, Token::Literal(3)),
-    WithSpan::new(ds, Token::Literal(1))
+    WithSpan::new(ds, Token::Literal(1)),
   ]);
   let cursor = s.begin();
   assert_eq!(cursor.peek(), Ok((&Token::Literal(7), ds)));
@@ -99,14 +108,20 @@ pub fn cursor_peek_assert() {
     WithSpan::new(ds, Token::Literal(7)),
     WithSpan::new(ds, Token::Literal(6)),
     WithSpan::new(ds, Token::Literal(3)),
-    WithSpan::new(ds, Token::Literal(1))
+    WithSpan::new(ds, Token::Literal(1)),
   ]);
   let cursor = s.begin();
   assert_eq!(cursor.peek_assert(&Token::Literal(7)), Ok(ds));
-  assert_eq!(cursor.peek_assert(&Token::Literal(9)), Err(Cerr::UnexpectedToken(vec!["9".into()]).with(ds)));
+  assert_eq!(
+    cursor.peek_assert(&Token::Literal(9)),
+    Err(Cerr::UnexpectedToken(vec!["9".into()]).with(ds))
+  );
   assert_eq!(cursor.peek_assert(&Token::Literal(7)), Ok(ds));
   cursor.next().unwrap();
   cursor.next().unwrap();
-  assert_eq!(cursor.peek_assert(&Token::Literal(0)), Err(Cerr::UnexpectedToken(vec!["0".into()]).with(ds)));
+  assert_eq!(
+    cursor.peek_assert(&Token::Literal(0)),
+    Err(Cerr::UnexpectedToken(vec!["0".into()]).with(ds))
+  );
   assert_eq!(cursor.peek_assert(&Token::Literal(3)), Ok(ds));
 }

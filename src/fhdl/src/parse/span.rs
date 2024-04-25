@@ -75,7 +75,10 @@ impl Span {
 
 impl From<Pos> for Span {
   fn from(value: Pos) -> Self {
-    Span { start: value, end: value }
+    Span {
+      start: value,
+      end: value,
+    }
   }
 }
 
@@ -88,9 +91,6 @@ pub struct WithSpan<T> {
 
 impl<T> WithSpan<T> {
   pub fn new(span: Span, t: T) -> Self {
-    WithSpan {
-      span,
-      t,
-    }
+    WithSpan { span, t }
   }
 }
