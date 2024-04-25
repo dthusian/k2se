@@ -30,5 +30,5 @@ pub fn transform_counter() {
     "counter.fhdl",
     include_str!("../../../../examples/counter.fhdl"),
   );
-  eprintln!("{:?}", modules);
+  eprintln!("{:#?}", modules);
 }

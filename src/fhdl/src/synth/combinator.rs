@@ -1,5 +1,6 @@
 use crate::parse::tokenizer::BinaryOp;
 use crate::synth::netlist::NetID;
+use crate::synth::synth::IncompleteNetID;
 
 /// Represents any combinator or circuit computational entity.
 /// If there's a 2-array of input nets, the convention is `[red, green]`.
@@ -106,15 +107,6 @@ pub struct Signal {
   pub name: String,
 }
 
-impl Default for Signal {
-  fn default() -> Self {
-    Signal {
-      ty: SignalType::Virtual,
-      name: "".into(),
-    }
-  }
-}
-
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct SignalWithCount {
   pub signal: Signal,
@@ -127,5 +119,6 @@ pub enum SignalRef {
   Each,
   Everything,
   Signal(Signal),
+  IncompleteSignal(IncompleteNetID),
   Const(i32),
 }

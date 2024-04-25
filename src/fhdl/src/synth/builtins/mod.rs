@@ -1,11 +1,12 @@
 pub mod binaryop;
+mod trigger;
 
 use crate::err::Cerr;
 use crate::parse::ast::NetType;
 use crate::synth::builtins::binaryop::BinaryOpFunc;
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 use std::collections::HashMap;
-use crate::synth::combinator::{Signal, SignalRef};
+use crate::synth::combinator::{SignalRef};
 
 /// Defines the requirements placed on a function argument during type checking.
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -33,7 +34,7 @@ impl SynthRef {
   
   pub fn as_signal_ref(&self) -> Option<SignalRef> {
     match self {
-      SynthRef::Net(_) => Some(SignalRef::Signal(Signal::default())),
+      SynthRef::Net(net) => Some(SignalRef::IncompleteSignal(*net)),
       SynthRef::Value(v) => Some(SignalRef::Const(*v)),
       SynthRef::String(_) => None
     }

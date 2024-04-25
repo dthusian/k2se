@@ -2,7 +2,7 @@ use crate::err::Cerr;
 use crate::parse::ast::NetType;
 use crate::parse::tokenizer::BinaryOp;
 use crate::synth::builtins::{register, BuiltinFunction, Builtins, FunctionArgReq, SynthRef};
-use crate::synth::combinator::{Combinator, Signal, SignalRef, VanillaCombinator, VanillaCombinatorOp};
+use crate::synth::combinator::{Combinator, SignalRef, VanillaCombinator, VanillaCombinatorOp};
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 
 /// Builtin functions for binary ops.
@@ -72,7 +72,7 @@ impl BuiltinFunction for BinaryOpFunc {
           output_signal: SignalRef::Anything,
           output_count: false,
           .. Default::default()
-        }), Some(net2), None, Some(anon));
+        }), Some(net2), None, anon);
         anon
       } else {
         panic!("Invalid use of mixed nets")
@@ -83,7 +83,7 @@ impl BuiltinFunction for BinaryOpFunc {
         output_signal: SignalRef::Each,
         output_count: false,
         .. Default::default()
-      }), Some(net1), Some(net2), Some(output));
+      }), Some(net1), Some(net2), output);
     } else if ty1 == NetType::Mixed || ty2 == NetType::Mixed {
       // case 2: single-mixed op
       // warning: single-mixed ops are "dirty": they leak virtual signals into the output
@@ -99,7 +99,7 @@ impl BuiltinFunction for BinaryOpFunc {
         output_signal: SignalRef::Each,
         output_count: false,
         .. Default::default()
-      }), Some(mixed_net), single.get_net(), Some(output));
+      }), Some(mixed_net), single.get_net(), output);
     } else {
       // case3: single-single op
       // this is relatively simple
@@ -107,10 +107,10 @@ impl BuiltinFunction for BinaryOpFunc {
         // unwrap: assign type ops are forbidden in expressions
         op: self.op.try_into().unwrap(),
         input_signals: [inputs[0].as_signal_ref().unwrap(), inputs[1].as_signal_ref().unwrap()],
-        output_signal: SignalRef::Signal(Signal::default()),
+        output_signal: SignalRef::IncompleteSignal(output),
         output_count: false,
         .. Default::default()
-      }), inputs[0].get_net(), inputs[1].get_net(), Some(output));
+      }), inputs[0].get_net(), inputs[1].get_net(), output);
     }
     Ok(())
   }

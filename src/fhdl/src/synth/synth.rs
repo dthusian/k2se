@@ -1,5 +1,5 @@
-use crate::err::{Cerr, CerrSpan};
-use crate::parse::ast::{Expr, Module, NetType, PortDecl, Stmt};
+use crate::err::Cerr;
+use crate::parse::ast::NetType;
 use crate::synth::combinator::{
   Combinator, Signal, SignalRef, VanillaCombinator, VanillaCombinatorOp,
 };
@@ -62,7 +62,7 @@ struct IncompleteCombinator {
   c: Combinator,
   in1: Option<IncompleteNetID>,
   in2: Option<IncompleteNetID>,
-  out: Option<IncompleteNetID>,
+  out: IncompleteNetID,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
@@ -120,7 +120,7 @@ impl<'a, 'b> ModuleSynthState<'a, 'b> {
     c: Combinator,
     in1: Option<IncompleteNetID>,
     in2: Option<IncompleteNetID>,
-    out: Option<IncompleteNetID>,
+    out: IncompleteNetID,
   ) {
     self
       .inc_combinator
@@ -232,7 +232,7 @@ fn presynth_ir_decls(mod_state: &mut ModuleSynthState, decls: &HashMap<String, I
         }),
         Some(net),
         None,
-        Some(net),
+        net,
       );
     }
   });
