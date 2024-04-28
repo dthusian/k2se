@@ -236,8 +236,22 @@ fn transform_stmt(
       expr,
     } => {
       state.validate_set(name, *assign_type, span, trigger.is_some());
-      let net = state.set_or_trigger(name, trigger.cloned());
-      transform_expr_and_assign_to(state, expr, span, net);
+      let ir_obj = state.ir_objects.get(&name);
+      if ir_obj.unwrap().mem && assign_type == &BinaryOp::Assign {
+        // mem objects that are assigned to need special treatment
+        // since they need to add a negated version back into it (since naive-assign actually increments it)
+        
+        // to fix this, generate an ad-hoc expr that subtracts the current memcell from the expr
+        // unfortunately we have to clone the entire expr tree to accompish this
+        let net = state.set_or_trigger(name, trigger.cloned());
+        transform_expr_and_assign_to(state, &Expr::BinaryOps {
+          car: Box::new(expr.clone()),
+          cdr: vec![(BinaryOp::Sub, Expr::Identifier { name: name.clone() })],
+        }, span, net);
+      } else {
+        let net = state.set_or_trigger(name, trigger.cloned());
+        transform_expr_and_assign_to(state, expr, span, net);
+      }
     }
 
     Stmt::WireDecl { name, expr, .. } => {

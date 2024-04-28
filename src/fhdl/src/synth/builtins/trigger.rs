@@ -4,6 +4,7 @@ use crate::synth::builtins::{BuiltinFunction, FunctionArgReq, SynthRef};
 use crate::synth::combinator::{Combinator, SignalRef, VanillaCombinator, VanillaCombinatorOp};
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 
+#[derive(Debug)]
 pub struct TriggerFunc {
   trigger_mode: TriggerKind
 }

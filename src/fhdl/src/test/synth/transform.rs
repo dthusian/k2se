@@ -3,13 +3,14 @@ use crate::parse::ast::{Expr, Module, NetType, PortClass, PortDecl, Stmt, Trigge
 use crate::parse::span::Span;
 use crate::parse::tokenizer::BinaryOp;
 use crate::synth::builtins::{BuiltinFunction, FunctionArgReq, SynthRef};
-use crate::synth::netlist::NetID;
-use crate::synth::synth::{GlobalSynthState, IncompleteNet, IncompleteNetID, ModuleSynthState};
+use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 use crate::synth::transform::transform_modules;
 use std::collections::HashMap;
+use std::fmt::{Debug};
 use std::slice;
 
 /// A builtin function used for testing.
+#[derive(Debug)]
 struct TestFunction {
   arg_ty: FunctionArgReq,
 }

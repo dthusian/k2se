@@ -9,6 +9,7 @@ use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 /// Unlike most builtin functions, these cannot be referred to by users directly
 /// and are synthesized directly by the transformation stage. As a result,
 /// they bypass typechecking and have ill-defined input/output types.
+#[derive(Debug)]
 pub struct BinaryOpFunc {
   op: BinaryOp,
 }

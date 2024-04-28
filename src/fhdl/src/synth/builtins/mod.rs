@@ -6,6 +6,7 @@ use crate::parse::ast::NetType;
 use crate::synth::builtins::binaryop::BinaryOpFunc;
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 use std::collections::HashMap;
+use std::fmt::Debug;
 use crate::synth::combinator::{SignalRef};
 
 /// Defines the requirements placed on a function argument during type checking.
@@ -42,14 +43,14 @@ impl SynthRef {
 }
 
 /// Trait implemented for each built-in function.
-pub trait BuiltinFunction {
+pub trait BuiltinFunction: Debug {
   fn arg_ty(&self) -> &[FunctionArgReq];
   fn return_ty(&self) -> NetType;
   fn synthesize(&self, state: &mut ModuleSynthState, inputs: &[SynthRef], output: IncompleteNetID) -> Result<(), Cerr>;
   fn constant_fold(&self, args: &[SynthRef]) -> Option<i32>;
 }
 
-type Builtins = HashMap<String, Box<dyn BuiltinFunction>>;
+pub type Builtins = HashMap<String, Box<dyn BuiltinFunction>>;
 
 pub fn collect_builtins() -> Builtins {
   let mut b = Builtins::new();

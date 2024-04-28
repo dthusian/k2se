@@ -3,11 +3,11 @@ use crate::parse::ast::NetType;
 use crate::synth::combinator::{
   Combinator, Signal, SignalRef, VanillaCombinator, VanillaCombinatorOp,
 };
-use crate::synth::ir::{IRModule, IRStmt, IRWireMemDecl};
+use crate::synth::ir::{IRModule, IRModuleInst, IRStmt, IRTriggerStmt, IRValue, IRWireMemDecl};
 use crate::synth::netlist::{Net, NetID, Netlist, WireColor};
 use std::collections::HashMap;
 
-use super::builtins::SynthRef;
+use super::builtins::{Builtins, SynthRef};
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct SynthSettings {
@@ -21,10 +21,11 @@ pub struct SynthSettings {
   main_module_conn_signals: Vec<Signal>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct GlobalSynthState<'a> {
   netlist: Netlist,
   collected_modules: HashMap<String, &'a IRModule>,
+  builtin_functions: &'a Builtins,
 }
 
 impl<'a> GlobalSynthState<'a> {
@@ -71,7 +72,7 @@ struct IncompleteModule {
   args: Vec<IncompleteNetID>,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug)]
 pub struct ModuleSynthState<'a, 'b> {
   global_state: &'b GlobalSynthState<'a>,
   inc_nets: Vec<IncompleteNet>,
@@ -130,6 +131,10 @@ impl<'a, 'b> ModuleSynthState<'a, 'b> {
   pub fn net_info(&self, id: IncompleteNetID) -> &IncompleteNet {
     &self.inc_nets[id]
   }
+  
+  pub fn find_net(&self, name: &str) -> Option<IncompleteNetID> {
+    self.inc_net_map.get(name).cloned()
+  }
 
   pub fn type_of(&self, r: &SynthRef) -> Option<NetType> {
     match r {
@@ -140,7 +145,7 @@ impl<'a, 'b> ModuleSynthState<'a, 'b> {
   }
 }
 
-pub fn synthesize(settings: &SynthSettings, modules: &[IRModule]) -> Result<Netlist, Cerr> {
+pub fn synthesize(settings: &SynthSettings, modules: &[IRModule], builtins: &Builtins) -> Result<Netlist, Cerr> {
   let collected_modules = collect_modules(modules);
   let mut state = GlobalSynthState {
     netlist: Netlist {
@@ -150,6 +155,7 @@ pub fn synthesize(settings: &SynthSettings, modules: &[IRModule]) -> Result<Netl
       combinator_modpath: vec![],
     },
     collected_modules,
+    builtin_functions: builtins,
   };
   // connect main module to the outside world
   let ports = &state
@@ -205,10 +211,16 @@ fn synthesize_module(
 
   // collect wire mem decls
   presynth_ir_decls(&mut mod_state, &module.objects);
+  
+  // collect module inst
+  presynth_modules(&mut mod_state, &module.module_inst);
 
   // run stmt presynth
-  presynth_stmts(state, &mut mod_state, &module.stmts);
+  presynth_stmts(&mut mod_state, &module.stmts);
 
+  // run trigger stmt presynth
+  
+  
   // resolve signals
   resolve_signals(&mut mod_state);
 
@@ -238,7 +250,54 @@ fn presynth_ir_decls(mod_state: &mut ModuleSynthState, decls: &HashMap<String, I
   });
 }
 
-fn presynth_stmts(state: &GlobalSynthState, mod_state: &mut ModuleSynthState, stmts: &[IRStmt]) {}
+fn presynth_stmts(mod_state: &mut ModuleSynthState, stmts: &[IRStmt]) {
+  stmts.iter()
+    .for_each(|v| {
+      let builtin = mod_state.global_state.builtin_functions.get(&v.op)
+        .expect("Synth error: Invalid builtin");
+      let inputs = v.args.iter()
+        .map(|v| {
+          match v {
+            IRValue::Net(net) => SynthRef::Net(mod_state.find_net(net).expect("Synth error: Net not found")),
+            IRValue::Lit(lit) => SynthRef::Value(*lit),
+            IRValue::Str(str) => SynthRef::String(str.clone()),
+          }
+        })
+        .collect::<Vec<_>>();
+      let output = mod_state.find_net(&v.dest)
+        .expect("Synth error: Net not found");
+      builtin.synthesize(mod_state, &inputs, output)
+        .expect("Synth error: Failed to synthesize builtin");
+    });
+}
+
+fn presynth_trigger_stmt(mod_state: &mut ModuleSynthState, stmts: &[IRTriggerStmt]) {
+  stmts.iter()
+    .for_each(|v| {
+      let src_net = mod_state.find_net(&v.src).expect("Synth error: Net not found");
+      let dest_net = mod_state.find_net(&v.dest).expect("Synth error: Net not found");
+      let on_net = mod_state.find_net(&v.on).expect("Synth error: Net not found");
+      mod_state.new_combinator(Combinator::Vanilla(VanillaCombinator {
+        op: VanillaCombinatorOp::Eq,
+        input_signals: [SignalRef::IncompleteSignal(on_net), SignalRef::Const(0)],
+        output_signal: SignalRef::Everything,
+        output_count: true,
+        .. Default::default()
+      }), Some(src_net), Some(on_net), dest_net);
+    });
+}
+
+fn presynth_modules(mod_state: &mut ModuleSynthState, modules: &[IRModuleInst]) {
+  modules.iter()
+    .for_each(|v| {
+      mod_state.inc_module.push(IncompleteModule {
+        module: v.name.clone(),
+        args: v.args.iter().map(|v| {
+          mod_state.find_net(v).expect("Synth error: Net not found")
+        }).collect::<Vec<_>>(),
+      })
+    })
+}
 
 fn resolve_signals(mod_state: &mut ModuleSynthState) {
   todo!()
