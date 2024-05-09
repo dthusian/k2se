@@ -499,7 +499,7 @@ fn transform_expr(state: &mut ModuleValidationState, expr: &Expr, span: Span) ->
             }
           });
         // create anon net
-        let anon = state.create_anon_net(func_box.return_ty());
+        let anon = state.create_anon_net(func_box.return_ty().expect("Non-type checked function used"));
         state.stmts.push(IRStmt {
           dest: anon.clone(),
           op: func.clone(),
@@ -546,7 +546,7 @@ fn transform_expr_and_assign_to(
   if !is_anon {
     state.stmts.push(IRStmt {
       dest: assign_to,
-      op: "passthrough".into(),
+      op: "$passthrough".into(),
       args: vec![result],
     });
   } else {

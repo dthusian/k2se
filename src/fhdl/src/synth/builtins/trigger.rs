@@ -1,6 +1,6 @@
 use crate::err::Cerr;
 use crate::parse::ast::{NetType, TriggerKind};
-use crate::synth::builtins::{BuiltinFunction, FunctionArgReq, SynthRef};
+use crate::synth::builtins::{BuiltinFunction, Builtins, FunctionArgReq, register, SynthRef};
 use crate::synth::combinator::{Combinator, SignalRef, VanillaCombinator, VanillaCombinatorOp};
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 
@@ -10,12 +10,16 @@ pub struct TriggerFunc {
 }
 
 impl TriggerFunc {
-  const ARGS: [FunctionArgReq; 1] = [FunctionArgReq::Net(NetType::Single)];
+  pub fn collect(b: &mut Builtins) {
+    register(b, "trig_inc", TriggerFunc { trigger_mode: TriggerKind::Increasing });
+    register(b, "trig_dec", TriggerFunc { trigger_mode: TriggerKind::Decreasing });
+    register(b, "trig_chg", TriggerFunc { trigger_mode: TriggerKind::Changed });
+  }
 }
 
 impl BuiltinFunction for TriggerFunc {
   fn arg_ty(&self) -> &[FunctionArgReq] {
-    &Self::ARGS
+    &[FunctionArgReq::Net(NetType::Single)]
   }
 
   fn return_ty(&self) -> Option<NetType> {

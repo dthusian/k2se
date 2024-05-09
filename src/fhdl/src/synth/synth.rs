@@ -96,7 +96,6 @@ impl IncompleteCombinator {
         comb2.output_nets = [self.in1.map(|v2| f_get_net(v2).0), self.in2.map(|v2| f_get_net(v2).1)];
         // fix signal references
         comb2.output_signals.iter_mut()
-          .filter_map(|v| v.as_mut())
           .for_each(|v| {
             if let CCSignalRef::IncompleteSignal(net_id, val) = v {
               *v = f_get_signal(*net_id).clone()
@@ -448,7 +447,7 @@ fn complete_nets(mod_state: ModuleSynthState) {
   completed_combs.iter().for_each(|&cid| {
     let in_refs = match &state.netlist.combinators[cid] {
       Combinator::Vanilla(comb) => comb.input_nets.to_vec(),
-      Combinator::Constant(comb) => vec![]
+      Combinator::Constant(_) => vec![]
     };
     in_refs.into_iter()
       .enumerate()

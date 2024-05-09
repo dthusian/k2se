@@ -20,8 +20,8 @@ impl BuiltinFunction for TestFunction {
     slice::from_ref(&self.arg_ty)
   }
 
-  fn return_ty(&self) -> NetType {
-    NetType::Single
+  fn return_ty(&self) -> Option<NetType> {
+    Some(NetType::Single)
   }
 
   fn synthesize(&self, _: &mut ModuleSynthState, _: &[SynthRef], _: IncompleteNetID) -> Result<(), Cerr> {

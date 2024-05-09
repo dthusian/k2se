@@ -43,7 +43,7 @@ impl Default for VanillaCombinator {
 pub struct ConstantCombinator {
   pub enabled: bool,
   pub output_nets: [Option<NetID>; 2],
-  pub output_signals: [Option<CCSignalRef>; 20],
+  pub output_signals: Vec<CCSignalRef>,
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]

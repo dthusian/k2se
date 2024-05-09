@@ -1,11 +1,17 @@
 use crate::err::Cerr;
 use crate::parse::ast::NetType;
-use crate::synth::builtins::{BuiltinFunction, FunctionArgReq, SynthRef};
-use crate::synth::combinator::{Combinator, ConstantCombinator, SignalRef, VanillaCombinator, VanillaCombinatorOp};
+use crate::synth::builtins::{BuiltinFunction, Builtins, FunctionArgReq, SynthRef};
+use crate::synth::combinator::{CCSignalRef, Combinator, ConstantCombinator, SignalRef, VanillaCombinator, VanillaCombinatorOp};
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 
 #[derive(Debug)]
-struct Passthrough;
+pub struct Passthrough;
+
+impl Passthrough {
+  pub fn collect(b: &mut Builtins) {
+    b.insert("$passthrough".into(), Box::new(Passthrough));
+  }
+}
 
 impl BuiltinFunction for Passthrough {
   fn arg_ty(&self) -> &[FunctionArgReq] {
@@ -40,12 +46,15 @@ impl BuiltinFunction for Passthrough {
           }), Some(*net), None, output);
         }
       }
-      SynthRef::Value(_) => {
+      SynthRef::Value(val) => {
+        if state.net_info(output).ty == NetType::Mixed {
+          
+        }
         state.new_combinator(Combinator::Constant(ConstantCombinator {
-          enabled: false,
-          output_nets: [],
-          output_signals: [],
-        }));
+          enabled: true,
+          output_nets: [None, None],
+          output_signals: vec![CCSignalRef::IncompleteSignal(output, *val)],
+        }), None, None, output);
       }
       SynthRef::String(_) => panic!("Unexpected string")
     }
@@ -53,7 +62,7 @@ impl BuiltinFunction for Passthrough {
     Ok(())
   }
 
-  fn constant_fold(&self, args: &[SynthRef]) -> Option<i32> {
+  fn constant_fold(&self, _: &[SynthRef]) -> Option<i32> {
     todo!()
   }
 }

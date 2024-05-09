@@ -8,6 +8,8 @@ use crate::synth::builtins::binaryop::BinaryOpFunc;
 use crate::synth::synth::{IncompleteNetID, ModuleSynthState};
 use std::collections::HashMap;
 use std::fmt::Debug;
+use crate::synth::builtins::passthrough::Passthrough;
+use crate::synth::builtins::trigger::TriggerFunc;
 use crate::synth::combinator::{SignalRef};
 
 /// Defines the requirements placed on a function argument during type checking.
@@ -56,6 +58,8 @@ pub type Builtins = HashMap<String, Box<dyn BuiltinFunction>>;
 pub fn collect_builtins() -> Builtins {
   let mut b = Builtins::new();
   BinaryOpFunc::collect(&mut b);
+  TriggerFunc::collect(&mut b);
+  Passthrough::collect(&mut b);
   b
 }
 
