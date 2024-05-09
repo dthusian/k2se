@@ -236,7 +236,7 @@ fn transform_stmt(
       expr,
     } => {
       state.validate_set(name, *assign_type, span, trigger.is_some());
-      let ir_obj = state.ir_objects.get(&name);
+      let ir_obj = state.ir_objects.get(name);
       if ir_obj.unwrap().mem && assign_type == &BinaryOp::Assign {
         // mem objects that are assigned to need special treatment
         // since they need to add a negated version back into it (since naive-assign actually increments it)

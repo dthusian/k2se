@@ -13,9 +13,6 @@ pub struct Netlist {
   pub net_external_conn: Vec<ExternalConn>,
   /// A list of combinators that connect to the nets.
   pub combinators: Vec<Combinator>,
-  /// Denotes through which modules a combinator was instantiated.
-  /// Can be used by layout code to optimize placement.
-  pub combinator_modpath: Vec<Vec<usize>>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]

@@ -1,5 +1,6 @@
 pub mod binaryop;
 mod trigger;
+mod passthrough;
 
 use crate::err::Cerr;
 use crate::parse::ast::NetType;
@@ -45,7 +46,7 @@ impl SynthRef {
 /// Trait implemented for each built-in function.
 pub trait BuiltinFunction: Debug {
   fn arg_ty(&self) -> &[FunctionArgReq];
-  fn return_ty(&self) -> NetType;
+  fn return_ty(&self) -> Option<NetType>;
   fn synthesize(&self, state: &mut ModuleSynthState, inputs: &[SynthRef], output: IncompleteNetID) -> Result<(), Cerr>;
   fn constant_fold(&self, args: &[SynthRef]) -> Option<i32>;
 }

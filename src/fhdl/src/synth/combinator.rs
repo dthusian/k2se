@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::parse::tokenizer::BinaryOp;
 use crate::synth::netlist::NetID;
 use crate::synth::synth::IncompleteNetID;
@@ -42,7 +43,7 @@ impl Default for VanillaCombinator {
 pub struct ConstantCombinator {
   pub enabled: bool,
   pub output_nets: [Option<NetID>; 2],
-  pub output_signals: [Option<SignalWithCount>; 20],
+  pub output_signals: [Option<CCSignalRef>; 20],
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -104,7 +105,7 @@ pub enum SignalType {
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
 pub struct Signal {
   pub ty: SignalType,
-  pub name: String,
+  pub name: Cow<'static, str>,
 }
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -121,4 +122,10 @@ pub enum SignalRef {
   Signal(Signal),
   IncompleteSignal(IncompleteNetID),
   Const(i32),
+}
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum CCSignalRef {
+  Signal(SignalWithCount),
+  IncompleteSignal(IncompleteNetID, i32),
 }

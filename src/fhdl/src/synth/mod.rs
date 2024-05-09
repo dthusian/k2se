@@ -6,3 +6,4 @@ pub mod ir;
 pub mod netlist;
 pub mod synth;
 pub mod transform;
+pub mod virt_signals;

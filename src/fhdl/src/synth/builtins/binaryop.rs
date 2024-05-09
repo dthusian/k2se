@@ -45,7 +45,7 @@ impl BuiltinFunction for BinaryOpFunc {
     panic!("binary ops bypass typechecking")
   }
 
-  fn return_ty(&self) -> NetType {
+  fn return_ty(&self) -> Option<NetType> {
     panic!("binary ops bypass typechecking")
   }
 
@@ -66,7 +66,9 @@ impl BuiltinFunction for BinaryOpFunc {
       let net2 = if self.op == BinaryOp::Add {
         net2
       } else if self.op == BinaryOp::Sub {
-        let anon = state.new_nets_unnamed(NetType::Mixed);
+        let anon = state.new_net_builder()
+          .net_type(NetType::Mixed)
+          .build(state);
         state.new_combinator(Combinator::Vanilla(VanillaCombinator {
           op: VanillaCombinatorOp::Mul,
           input_signals: [SignalRef::Each, SignalRef::Const(-1)],

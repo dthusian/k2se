@@ -18,8 +18,8 @@ impl BuiltinFunction for TriggerFunc {
     &Self::ARGS
   }
 
-  fn return_ty(&self) -> NetType {
-    NetType::Single
+  fn return_ty(&self) -> Option<NetType> {
+    Some(NetType::Single)
   }
 
   fn synthesize(&self, state: &mut ModuleSynthState, inputs: &[SynthRef], output: IncompleteNetID) -> Result<(), Cerr> {
@@ -31,7 +31,9 @@ impl BuiltinFunction for TriggerFunc {
       TriggerKind::Raw => unreachable!(),
     };
     // anonymous net that is the input but delayed
-    let delayed_input = state.new_nets_unnamed(NetType::Single);
+    let delayed_input = state.new_net_builder()
+      .net_type(NetType::Single)
+      .build(state);
     // passthrough combinator
     state.new_combinator(Combinator::Vanilla(VanillaCombinator {
       op: VanillaCombinatorOp::Add,
