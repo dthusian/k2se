@@ -6,6 +6,7 @@ mod synth;
 #[cfg(test)]
 mod test;
 mod util;
+mod layout;
 
 fn main() {
   println!("Hello, world!");

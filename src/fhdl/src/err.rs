@@ -1,3 +1,4 @@
+use std::error::Error;
 use crate::parse::span::{Pos, Span};
 use crate::parse::tokenizer::BinaryOp;
 use std::fmt::{Debug, Display, Formatter, Write};
@@ -61,7 +62,10 @@ pub enum Cerr {
   // Synthesis Errors
   #[error("Main module '{0}' not found")]
   MainNotFound(String),
+  
   // Layout Errors (todo)
+  #[error("LayoutShaper invalid argument: {0}")]
+  LayoutShaperInvalidArg(String)
 }
 
 impl Cerr {

@@ -10,7 +10,8 @@ Basic process:
   - Synthesis
   - Optimization
 - Layout
-  - ?
+  - Layout
+  - Blueprinting
 
 This is a relatively quick walkthrough of the entire compiler.
 
@@ -62,4 +63,9 @@ statement. Better results can be had from looking at the entire netlist, so that
 Optimization passes are implemented with the `OptimizePass` trait, which simply gives you the netlist to do
 whatever with.
 
-The final step is layout. I haven't finished this step yet.
+The final phase is layout. A really good layout algorithm is hard, so we go for a good-enough one. Layout is primarily
+done with a `LayoutShaper` trait that tells the layout engine which positions are available for placing buildings. The
+default `LayoutShaper` is one that, given a rectangular area, allows arbitrary placement within the rectangle with
+space for substations such that all tiles are able to get power.
+
+After layout, the design is converted into a Factorio blueprint and outputted.
