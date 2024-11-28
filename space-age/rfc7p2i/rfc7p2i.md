@@ -1,6 +1,6 @@
 # RFC 7+2i: Move-assignment Train System for Gleba
 
-> Draft 3
+> Draft 2
 
 ## 0. Terminology
 
@@ -128,8 +128,3 @@ the plantations. The processed fruit can be used for power generation or discard
 ### 3.4. Train Buffer
 
 The train buffer area consists of a waiting area where trains can wait for an open slot in the fruit provider.
-
-### 3.5 Seed Transport
-
-Seeds must be transported from the leftovers handling area to the plantations. Since seeds do not spoil,
-and seeds are used in much smaller quantities this can be accomplished using conventional trains or logistic bots.
