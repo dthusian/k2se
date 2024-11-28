@@ -1,6 +1,6 @@
 # RFC 7+2i: Move-assignment Train System for Gleba
 
-> Draft 1
+> Draft 2
 
 ## 0. Terminology
 
@@ -16,7 +16,7 @@ Gleba presents a completely new approach to Factorio logistics. Due to spoilage,
 practice of using backpressure to distribute items evenly will not work. This also means
 that vanilla many-to-many train systems cannot work effectively either.
 
-This document presents a new method for train logistics with spoilable items, intended for use with Yumako or Jellynut fruit.
+This document presents a new system for train logistics with spoilable items, intended for use with Yumako or Jellynut fruit.
 
 ## 2. High-level Overview
 
@@ -69,64 +69,61 @@ The action where a train arrives at a requester train stop, removes the existing
 itself into the stop is similar to the C++ move-assignment constructor, hence the name move-assignment train
 system.
 
-Trains are routed to the fruit requester with the highest priority, which is set to be higher the less fruits
-are in the currently buffered train. This balances trains to service the most demanding processing
-areas without neglecting less demanding areas.
-
-Seeds are sent from the leftovers handling area back to the plantations in an implementation-defined way.
-For low throughput, logistic robots can be used, or alternatively a standard many-to-many train system can be used.
-
-### Advantages and Disadvantages
+### 2.1. Advantages and Disadvantages
 
 Advantages of MATS include:
 - No fruit is needlessly discarded. That is, there will never exist a situation where some processing areas
-  are starved for materials but some fruit is being discarded.
+  are starved for fruits but fruit is being discarded.
 - Scalable. MATS supports an arbitrary number of plantations and processing areas.
+- Optimized for freshness.
 - Excess fruits can be collected in a central area and used for power generation.
 
 Disadvantages of MATS include:
 - No spore management. Plantations can always be active, producing spores that induce attacks on the base.
 - Request depth is limited to 2, since requesting more trains will simply cause all but the last to be removed immediately.
 
-## 3. Functional Specification
+## 3. Functional Description
 
 ### 3.1. Plantation
 
-The plantation contains an implementation-defined seed requester, and one or more fruit providers.
+The plantation receives seeds from the seed requester and grows them into fruits with agricultural towers.
+This process is always active, because trees have a lead time of 5 minutes, it is difficult to throttle agricultural
+towers effectively.
 
-- (1) Each fruit provider is a train stop.
-- (2) Fruit providers must load the train with fruits, and remove the train when it is full.
-- (3) To deal with possible spoilage, fruit providers must also remove the train if fruit cannot be inserted into the train.
-- (4) Fruit providers should request multiple trains to maximize throughput.
-
-- (5) The seed requester should transport seeds from the leftovers handling to the plantation.
-- (6) The seed requester should not buffer unlimited amounts of seeds.
+Fruits are loaded into trains until they are full and then sent to processing areas. The plantation's train
+stop should have a large request depth.
 
 ### 3.2. Processing Area
 
-The processing area contains one or more fruit requesters.
+A processing area is any area that uses fruits to create other products.
 
-- (1) Each fruit requester is a train stop with 2 train limit.
-- (2) Fruit requesters must remove the current train if more than 1 train is inside the requester.
-- (3) Fruit requesters must set their priority according to the expression `(T - x) / (T / 100)`, where
-  `x` is the amount of fruits inside the cargo of the current train, `T` is the number of fruits fit inside of a train.
-- (4) The seeds produced from processing fruits must be loaded back onto the train in the corresponding fruit requester.
-- (5) Fruit requesters must not unload into chests.
+Fruits are requested via a fruit requester station. A processing area might have other stations that are
+outside the scope of this document.
 
-- (6) Processing areas may implement a shutdown mechanism.
-      During shutdown, the fruit requester should remove all trains and must set its train limit to 0.
+Fruit requester have a train limit of 2. Normally, one train is parked in the station. If another train arrives,
+the first train is removed. This is done by reading the train signal before the 2nd train slot, and 
+sending that circuit signal to the train, which is configured to leave when the train signal is red.
+
+Fruit requesters have their priority set to `(T - x) / (T / 100)`, where `x` is the amount of fruits
+inside the cargo of the current train, `T` is the number of fruits fit inside of a train.
+This causes trains to be distributed to the most empty requester, which balances the distribution of trains
+across all requesters. 
+
+Fruit requesters must not unload trains into chests. The intent is that the train itself is used as a buffer to pull from.
+The advantage of using a train for it is that the train can be instantly flushed so that only the freshest products will
+be used.
+
+Some processing areas may implement a shutdown mechanism. If the processing area shuts down, the fruit requester
+must set its train limit to 0, and optionally may remove currently parked trains.
 
 ### 3.3. Leftovers Handling
 
-The leftovers handling area contains one or more leftover requesters.
+The leftovers handling area fully cleans out trains that have been removed from a fruit requester.
+This is required because trains can be removed from the fruit requester without being empty.
 
-- (1) Each leftover requester is a train stop.
-- (2) Leftover requesters should request multiple trains to maximize throughput.
-- (3) Leftover requesters should unload into chests to reduce the time a train spends inside of it.
-
-- (4) Leftovers handling must unload fruits and seeds from trains and processes them.
-- (5) The processed fruits must be discarded in an implementation-defined way.
-- (6) The seeds must be sent to plantations in an implementation-defined way, or may be discarded if there is an excess.
+The leftovers handling area should unload trains into chests for faster unloading.
+Fruits are processed into seeds and processed fruit. Seeds from processing and seeds from the train are then sent to
+the plantations. The processed fruit can be used for power generation or discarded.
 
 ### 3.4. Train Buffer
 
