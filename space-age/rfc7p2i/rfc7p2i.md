@@ -1,6 +1,6 @@
 # RFC 7+2i: Move-assignment Train System for Gleba
 
-> Draft 2
+> Draft 3
 
 ## 0. Terminology
 
@@ -14,7 +14,7 @@
 
 Gleba presents a completely new approach to Factorio logistics. Due to spoilage, the common
 practice of using backpressure to distribute items evenly will not work. This also means
-that vanilla many-to-many train systems cannot work effectively either.
+that 1.1 many-to-many train systems cannot work effectively either.
 
 This document presents a new system for train logistics with spoilable items, intended for use with Yumako or Jellynut fruit.
 
@@ -128,3 +128,8 @@ the plantations. The processed fruit can be used for power generation or discard
 ### 3.4. Train Buffer
 
 The train buffer area consists of a waiting area where trains can wait for an open slot in the fruit provider.
+
+### 3.5 Seed Transport
+
+Seeds must be transported from the leftovers handling area to the plantations. Since seeds do not spoil,
+and seeds are used in much smaller quantities this can be accomplished using conventional trains or logistic bots.
